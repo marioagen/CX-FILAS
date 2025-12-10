@@ -10,6 +10,7 @@ export interface User {
   email: string;
   local: string;
   docsAtribuidos: AssignedDoc[] | '-';
+  bolsao?: string; // New optional property to identify the group/pool
 }
 
 export interface Manager {
