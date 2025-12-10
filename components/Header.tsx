@@ -1,14 +1,45 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MenuIcon } from './Icons';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onPageChange: (page: 'queueManagement' | 'documentAnalysis') => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onPageChange }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleMenuClick = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleNavigation = (page: 'queueManagement' | 'documentAnalysis') => {
+    onPageChange(page);
+    setIsMenuOpen(false); // Close menu after navigation
+  };
+
   return (
-    <header className="bg-[#005c9e] text-white flex items-center justify-between p-3 shadow-md">
+    <header className="bg-[#005c9e] text-white flex items-center justify-between p-3 shadow-md relative z-10">
       <div className="flex items-center">
-        <button className="p-2">
+        <button className="p-2 relative" onClick={handleMenuClick} aria-label="Open menu">
           <MenuIcon className="h-6 w-6" />
         </button>
+        {isMenuOpen && (
+          <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-md shadow-lg py-2 text-gray-800 z-20">
+            <button
+              onClick={() => handleNavigation('queueManagement')}
+              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+            >
+              Gestão de Filas
+            </button>
+            <button
+              onClick={() => handleNavigation('documentAnalysis')}
+              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+            >
+              Documentos de Análise
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
