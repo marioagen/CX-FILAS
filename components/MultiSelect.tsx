@@ -61,23 +61,26 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options }) => {
                             placeholder="Buscar..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full px-2 py-1.5 bg-gray-700 text-white placeholder-gray-400 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full px-2 py-1.5 bg-gray-50 text-gray-800 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#005c9e] text-sm"
                         />
                     </div>
                     <ul className="overflow-y-auto flex-grow">
                         {filteredOptions.map(option => (
-                            <li key={option} className="p-2 hover:bg-blue-100 cursor-pointer flex items-center" onClick={() => handleToggleOption(option)}>
+                            <li key={option} className="p-2 hover:bg-blue-50 cursor-pointer flex items-center" onClick={() => handleToggleOption(option)}>
                                 <input
                                     type="checkbox"
                                     readOnly
                                     checked={selectedOptions.includes(option)}
-                                    className="appearance-none h-4 w-4 rounded-sm bg-gray-700 checked:bg-blue-600 mr-3 pointer-events-none"
+                                    className="h-4 w-4 rounded border-gray-300 text-[#005c9e] focus:ring-[#005c9e] mr-3 pointer-events-none accent-[#005c9e]"
                                 />
                                 <span className="w-full cursor-pointer select-none text-gray-800">
                                     {option}
                                 </span>
                             </li>
                         ))}
+                        {filteredOptions.length === 0 && (
+                            <li className="p-2 text-gray-500 text-sm text-center">Nenhuma opção encontrada</li>
+                        )}
                     </ul>
                 </div>
             )}

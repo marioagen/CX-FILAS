@@ -144,7 +144,7 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {['ID', 'Número Dossiê', 'Atribuído Para', 'Data Inicial', 'Data Finalização', 'Status', 'Dias Restantes', 'Ações'].map((header) => (
+              {['ID', 'Número Dossiê', 'Data Inicial', 'Data Finalização', 'Status', 'Dias Restantes', 'Ações'].map((header) => (
                 <th key={header} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {header}
                 </th>
@@ -156,7 +156,6 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
               <tr key={doc.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.numeroDossie}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{doc.atribuidoPara || <span className="text-gray-400 italic">N/D</span>}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.dataInicial}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.dataFinalizacao || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">

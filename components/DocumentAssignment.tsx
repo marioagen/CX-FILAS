@@ -151,6 +151,8 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                                 <label htmlFor="select-all" className="ml-2 font-medium text-gray-700">Selecionar todos</label>
                             </div>
                             <div className="flex items-center space-x-1">
+                                {/* 
+                                   View toggles hidden as requested
                                 <button onClick={() => setViewMode('table')} className={`p-2 rounded-md ${viewMode === 'table' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`} title="Visualização em Tabela">
                                     <ListIcon className="h-5 w-5" />
                                 </button>
@@ -158,6 +160,7 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                                     <LayoutGridIcon className="h-5 w-5" />
                                 </button>
                                 <div className="w-px h-6 bg-gray-200 mx-2"></div>
+                                */}
                                 <div className="flex items-center space-x-2 text-gray-700">
                                     <span>Mostrar:</span>
                                     <SelectInput options={['Todos', '10', '25', '50']} defaultValue="Todos" />

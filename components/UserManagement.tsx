@@ -247,7 +247,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                       onClick={(e) => { e.stopPropagation(); onAssignClick(manager.users[0]); }}
                     >
                         <AssignIcon className="h-4 w-4" />
-                        <span>Atribuição Rápida</span>
+                        <span>Atribuir bolsão</span>
                     </button>
                 </div>
             </button>
