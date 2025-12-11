@@ -2,6 +2,7 @@
 import React from 'react';
 import { User, Document } from '../types';
 import { CloseIcon, SearchIcon, TrashIcon, ChevronDownIcon, CalendarIcon, ResetIcon, DownloadIcon, UploadIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
+import MultiSelect from './MultiSelect';
 
 interface DocumentAssignmentProps {
   user: User;
@@ -26,6 +27,10 @@ const availableDocsData: Document[] = [
 
 
 const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack }) => {
+    const grupoCredorOptions = [ 'Bancos Privados', 'COHAB', 'CAIXA', 'Entes Públicos', 'Liquidandas', 'Outros' ];
+    const agenteFinanceiroOptions = [ '22000 - BANCO UBS PACTUAL / PREVISUL', '22001 - BANCO ITAÚ / BANESTADO', '50013 - BANCO DE CRÉDITO NACIONAL S/A - BCN S/A', '50048 - BANCO SANTANDER BRASIL S/A', '50137 - BANCO REAL S/A' ];
+    const categoriaOptions = [ 'AJ - Cumprimento', 'AJ - Subsídio', 'Pedidos GECVS', 'Ofício Vencido', 'Pedido AF', 'Reanálise (Inadequado AUDIR)' ];
+
     return (
         <div className="bg-white rounded-lg shadow-xl w-full flex flex-col">
             <header className="flex justify-between items-center p-4 border-b">
@@ -46,12 +51,12 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                         </button>
                     </div>
                     <div className="flex items-center border rounded-md mb-4">
-                         <input type="text" placeholder="Buscar documentos..." className="w-full p-2 pl-3 focus:outline-none bg-gray-100 rounded-l-md"/>
+                         <input type="text" placeholder="Buscar documentos..." className="w-full p-2 pl-3 focus:outline-none bg-gray-100 rounded-l-md text-gray-800 placeholder-gray-500"/>
                          <button className="bg-blue-600 text-white p-2.5 rounded-r-md m-[-1px] border border-blue-600"><SearchIcon className="h-5 w-5" /></button>
                     </div>
                     <div className="space-y-2">
                         {assignedDocsData.map(doc => (
-                            <div key={doc.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md text-sm">
+                            <div key={doc.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md text-sm text-gray-800">
                                 <span><span className="font-bold">{doc.id}</span> - {doc.name}</span>
                                 <button className="text-gray-500 hover:text-red-600"><CloseIcon className="h-5 w-5"/></button>
                             </div>
@@ -68,15 +73,15 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <SearchIcon className="h-5 w-5 text-gray-400"/>
                                 </div>
-                                <input type="text" placeholder="Buscar documentos..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-100"/>
+                                <input type="text" placeholder="Buscar documentos..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-100 text-gray-800 placeholder-gray-500"/>
                              </div>
                         </div>
-                        <div className="lg:col-span-3"><SelectInput label="Grupo Credor" /></div>
-                        <div className="lg:col-span-3"><SelectInput label="Agente Financeiro" /></div>
+                        <div className="lg:col-span-3"><MultiSelect label="Grupo Credor" options={grupoCredorOptions} /></div>
+                        <div className="lg:col-span-3"><MultiSelect label="Agente Financeiro" options={agenteFinanceiroOptions} /></div>
                         <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
                         <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
                         
-                        <div className="lg:col-span-2"><SelectInput label="Categoria" /></div>
+                        <div className="lg:col-span-2"><MultiSelect label="Categoria" options={categoriaOptions} /></div>
                         <div className="lg:col-span-2"><SelectInput label="Status" /></div>
                         <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
                         <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
@@ -105,9 +110,9 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                         <div className="flex justify-between items-center mb-4 text-sm">
                             <div className="flex items-center">
                                 <input type="checkbox" id="select-all" className="h-4 w-4 text-blue-600 border-gray-300 rounded"/>
-                                <label htmlFor="select-all" className="ml-2 font-medium">Selecionar todos</label>
+                                <label htmlFor="select-all" className="ml-2 font-medium text-gray-700">Selecionar todos</label>
                             </div>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-2 text-gray-700">
                                 <span>Mostrar:</span>
                                 <SelectInput options={['Todos', '10', '25', '50']} defaultValue="Todos" />
                                 <span>itens</span>
@@ -141,7 +146,7 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
 const TextInput: React.FC<{ label?: string }> = ({ label }) => (
     <div>
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
-        <input type="text" className="w-full p-2 border border-gray-300 rounded-md bg-gray-100" />
+        <input type="text" className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-800" />
     </div>
 );
 
@@ -149,7 +154,7 @@ const SelectInput: React.FC<{ label?: string, options?: string[], defaultValue?:
      <div>
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
         <div className="relative">
-            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-100">
+            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-100 text-gray-800">
                 {options.map(opt => <option key={opt}>{opt}</option>)}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -163,7 +168,7 @@ const DateInput: React.FC<{label?: string}> = ({label}) => (
      <div className="w-full">
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
         <div className="relative">
-             <input type="text" placeholder="dd/mm/aaaa" className="w-full p-2 border border-gray-300 rounded-md pr-10 bg-gray-100" />
+             <input type="text" placeholder="dd/mm/aaaa" className="w-full p-2 border border-gray-300 rounded-md pr-10 bg-gray-100 text-gray-800 placeholder-gray-500" />
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                 <CalendarIcon className="h-5 w-5"/>
             </div>
@@ -188,20 +193,20 @@ const DocumentItem: React.FC<{doc: Document}> = ({ doc }) => {
             <input type="checkbox" className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"/>
             <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1">
                 <p><span className="font-semibold text-blue-600">Id: {doc.id}</span></p>
-                <p><span className="font-semibold">Nr. Doc.:</span> {doc.nrDoc}</p>
-                <p><span className="font-semibold">Cat.:</span> {doc.cat}</p>
-                <p><span className="font-semibold">Stat.:</span> {doc.stat}</p>
-                <p><span className="font-semibold">Dt. assin.:</span> {doc.dtAssin}</p>
-                <p className="col-span-1 sm:col-span-2"><span className="font-semibold">Mut.:</span> {doc.mut}</p>
-                <p><span className="font-semibold">Tipo evt.:</span> {doc.tipoEvt}</p>
-                <p><span className="font-semibold">OR:</span> {doc.or}</p>
-                <p><span className="font-semibold">Plan. reaj.:</span> {doc.planReaj}</p>
-                <p><span className="font-semibold">IM:</span> {doc.im}</p>
-                <p><span className="font-semibold">FH2:</span> {doc.fh2}</p>
-                <p><span className="font-semibold">FH3:</span> {doc.fh3}</p>
-                <p><span className="font-semibold">Cess.:</span> {doc.cess}</p>
-                <p><span className="font-semibold">Cef:</span> {doc.cef}</p>
-                <p><span className="font-semibold">{doc.codigoFh2}</span></p>
+                <p><span className="font-semibold text-gray-800">Nr. Doc.:</span> {doc.nrDoc}</p>
+                <p><span className="font-semibold text-gray-800">Cat.:</span> {doc.cat}</p>
+                <p><span className="font-semibold text-gray-800">Stat.:</span> {doc.stat}</p>
+                <p><span className="font-semibold text-gray-800">Dt. assin.:</span> {doc.dtAssin}</p>
+                <p className="col-span-1 sm:col-span-2"><span className="font-semibold text-gray-800">Mut.:</span> {doc.mut}</p>
+                <p><span className="font-semibold text-gray-800">Tipo evt.:</span> {doc.tipoEvt}</p>
+                <p><span className="font-semibold text-gray-800">OR:</span> {doc.or}</p>
+                <p><span className="font-semibold text-gray-800">Plan. reaj.:</span> {doc.planReaj}</p>
+                <p><span className="font-semibold text-gray-800">IM:</span> {doc.im}</p>
+                <p><span className="font-semibold text-gray-800">FH2:</span> {doc.fh2}</p>
+                <p><span className="font-semibold text-gray-800">FH3:</span> {doc.fh3}</p>
+                <p><span className="font-semibold text-gray-800">Cess.:</span> {doc.cess}</p>
+                <p><span className="font-semibold text-gray-800">Cef:</span> {doc.cef}</p>
+                <p><span className="font-semibold text-gray-800">{doc.codigoFh2}</span></p>
             </div>
         </div>
     )

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Manager, User, AssignedDoc } from '../types';
 import { SearchIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, AssignIcon, CloseIcon, SlidersIcon, FileTextIcon } from './Icons';
 import DocumentAssignment from './DocumentAssignment';
@@ -159,8 +159,12 @@ interface AccordionItemProps {
     onManageQueueClick: (manager: Manager) => void;
 }
 
+type SortKey = 'bolsao' | 'docsAtribuidos';
+type SortDirection = 'asc' | 'desc';
+
 const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle, onAssignClick, onManageQueueClick }) => {
     const [activeBolsaoTab, setActiveBolsaoTab] = useState<string>('Todos');
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: 'asc' });
 
     // Extract unique bolsoes from users
     const uniqueBolsoes = Array.from(new Set(manager.users.map(u => u.bolsao).filter(Boolean))) as string[];
@@ -172,6 +176,52 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
         if (activeBolsaoTab === 'Sem Bolsão') return !user.bolsao;
         return user.bolsao === activeBolsaoTab;
     });
+    
+    const handleSort = (key: SortKey) => {
+        let direction: SortDirection = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedUsers = useMemo(() => {
+        let sortableUsers = [...filteredUsers];
+        if (sortConfig.key !== null) {
+            sortableUsers.sort((a, b) => {
+                let aValue: string | number;
+                let bValue: string | number;
+
+                if (sortConfig.key === 'bolsao') {
+                    // Treat 'Não atribuído' as coming last alphabetically
+                    aValue = a.bolsao || 'Z_Last'; 
+                    bValue = b.bolsao || 'Z_Last';
+                } else { // docsAtribuidos
+                    aValue = Array.isArray(a.docsAtribuidos) ? a.docsAtribuidos.length : 0;
+                    bValue = Array.isArray(b.docsAtribuidos) ? b.docsAtribuidos.length : 0;
+                }
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableUsers;
+    }, [filteredUsers, sortConfig]);
+
+    const getSortIcon = (key: SortKey) => {
+        if (sortConfig.key !== key) {
+            return <ChevronDownIcon className="h-3 w-3 text-gray-300" />;
+        }
+        if (sortConfig.direction === 'asc') {
+            return <ChevronUpIcon className="h-3 w-3" />;
+        }
+        return <ChevronDownIcon className="h-3 w-3" />;
+    };
 
     return (
         <div className="border border-gray-200 rounded-lg">
@@ -264,15 +314,31 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                         <table className="min-w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
-                                    {['Matrícula', 'Nome completo', 'E-mail', 'Local', 'Bolsão', 'Docs. atribuídos', 'Ação'].map((header) => (
+                                    {['Matrícula', 'Nome completo', 'E-mail', 'Local'].map((header) => (
                                         <th key={header} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             {header}
                                         </th>
                                     ))}
+                                    {/* Sortable headers */}
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('bolsao')}>
+                                        <div className="flex items-center space-x-1">
+                                            <span>Bolsão</span>
+                                            {getSortIcon('bolsao')}
+                                        </div>
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('docsAtribuidos')}>
+                                        <div className="flex items-center space-x-1">
+                                            <span>Docs. atribuídos</span>
+                                            {getSortIcon('docsAtribuidos')}
+                                        </div>
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Ação
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredUsers.map((user) => (
+                                {sortedUsers.map((user) => (
                                     <tr key={user.matricula} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{user.matricula}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{user.nomeCompleto}</td>
@@ -305,7 +371,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                                                     )}
                                                 </div>
                                             ) : (
-                                                <span className="text-gray-400">-</span>
+                                                <span className="text-gray-400 italic text-xs">Não atribuído</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -319,7 +385,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                                         </td>
                                     </tr>
                                 ))}
-                                {filteredUsers.length === 0 && (
+                                {sortedUsers.length === 0 && (
                                     <tr>
                                         <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
                                             Nenhum analista encontrado neste grupo.
