@@ -35,4 +35,11 @@ export interface Document {
     cess: string;
     cef: string;
     codigoFh2: string;
+    gestor?: string;
+    bolsao?: string;
+}
+
+export interface UserProfile {
+    name: string;
+    role: 'analyst' | 'manager';
 }

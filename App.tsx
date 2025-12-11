@@ -3,12 +3,22 @@ import React, { useState } from 'react';
 import Header from './components/Header';
 import UserManagement from './components/UserManagement';
 import DocumentAnalysisPage from './components/DocumentAnalysisPage';
+import { UserProfile } from './types';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'queueManagement' | 'documentAnalysis'>('queueManagement');
+  const [currentPage, setCurrentPage] = useState<'queueManagement' | 'documentAnalysis'>('documentAnalysis');
+  const [userProfile, setUserProfile] = useState<UserProfile>({ name: 'Analista Teste', role: 'analyst' });
 
   const handlePageChange = (page: 'queueManagement' | 'documentAnalysis') => {
     setCurrentPage(page);
+  };
+
+  const toggleUserProfile = () => {
+    setUserProfile(currentProfile => 
+      currentProfile.role === 'analyst' 
+        ? { name: 'Gestor Teste', role: 'manager' }
+        : { name: 'Analista Teste', role: 'analyst' }
+    );
   };
 
   const breadcrumbs = currentPage === 'queueManagement'
@@ -17,10 +27,18 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] font-sans">
-      <Header onPageChange={handlePageChange} />
+      <Header 
+        onPageChange={handlePageChange} 
+        userProfile={userProfile} 
+        onToggleProfile={toggleUserProfile} 
+      />
       <main className="p-4 sm:p-6 lg:p-8">
         <Breadcrumbs paths={breadcrumbs} />
-        {currentPage === 'queueManagement' ? <UserManagement /> : <DocumentAnalysisPage />}
+        {currentPage === 'queueManagement' ? (
+          <UserManagement />
+        ) : (
+          <DocumentAnalysisPage userProfile={userProfile} />
+        )}
       </main>
     </div>
   );

@@ -1,12 +1,15 @@
 
 import React, { useState } from 'react';
-import { MenuIcon } from './Icons';
+import { MenuIcon, UserRoundIcon, UsersIcon } from './Icons';
+import { UserProfile } from '../types';
 
 interface HeaderProps {
   onPageChange: (page: 'queueManagement' | 'documentAnalysis') => void;
+  userProfile: UserProfile;
+  onToggleProfile: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onPageChange }) => {
+const Header: React.FC<HeaderProps> = ({ onPageChange, userProfile, onToggleProfile }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleMenuClick = () => {
@@ -42,6 +45,15 @@ const Header: React.FC<HeaderProps> = ({ onPageChange }) => {
         )}
       </div>
       <div className="flex items-center space-x-4">
+        <button 
+          onClick={onToggleProfile}
+          title="Alternar perfil (demonstração)"
+          className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10"
+        >
+          {userProfile.role === 'analyst' ? <UserRoundIcon className="h-5 w-5"/> : <UsersIcon className="h-5 w-5"/> }
+          <span className="text-sm font-medium capitalize">{userProfile.role}</span>
+        </button>
+        <div className="w-px h-8 bg-white/20"></div>
         <div className="flex items-center space-x-2">
           <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white text-xl">
             W

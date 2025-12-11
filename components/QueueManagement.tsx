@@ -1,7 +1,16 @@
 
-import React, { useState } from 'react';
-import { Manager, User } from '../types';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Manager, User, Document } from '../types';
 import { CloseIcon, SearchIcon, ChevronDownIcon, CalendarIcon, ResetIcon, PlusIcon, TrashIcon, UsersIcon, FileTextIcon } from './Icons';
+
+// Mock data, same as in DocumentAssignment for consistency
+const availableDocsData: Document[] = [
+    { id: '472', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Simplificada', stat: 'Em Análise (Simplificada)', dtAssin: '18/06/1986 00:00:00', mut: 'DORIA VANIA NUNES BARBOSA LIMA', tipoEvt: 'L13', or: '32', planReaj: 'EQ1 1 P 01 CTP', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2' },
+    { id: '474', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Completa', stat: 'Em Análise (Completa)', dtAssin: '13/09/1984 00:00:00', mut: 'MARICELIA MORAIS FREITAS', tipoEvt: 'L13', or: '32', planReaj: 'PES A 4 A 07 SMH', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2' },
+    { id: '543', nrDoc: '71657_9001319854844_22001_0008020420670_1.pdf', cat: 'Simplificada', stat: '1ª Análise', dtAssin: '01/09/1988 00:00:00', mut: 'ROSANGELA FERREIRA DE LIMA', tipoEvt: 'L10', or: '32', planReaj: 'EQ1 1 P 06 CTP', im: '07', fh2: 'Não', fh3: 'Não', cess: 'Não', cef: '0910', codigoFh2: 'Código FH2' },
+    { id: '546', nrDoc: '32138_10104932667_85053_9948000312011_1.pdf', cat: 'Simplificada', stat: 'Pedido Reanálise', dtAssin: '20/06/1983 00:00:00', mut: 'AROLDO GUEDES DA CUNHA', tipoEvt: 'L13', or: '32', planReaj: 'PES 1 A 04 UPC', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2' },
+    { id: '547', nrDoc: '41801_9001108341627_43521_7001078400003_1.pdf', cat: 'Simplificada', stat: 'Pedido Reanálise', dtAssin: '31/03/1981 00:00:00', mut: 'HUMBERTO CARDOZO DE SOUZA', tipoEvt: 'TPZ', or: '11', planReaj: 'PES 1 A 01 UPC', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '0000', codigoFh2: 'Código FH2' },
+];
 
 interface QueueManagementProps {
   manager: Manager;
@@ -16,25 +25,71 @@ interface Bolsao {
 
 const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) => {
     const [bolsoes, setBolsoes] = useState<Bolsao[]>([
-        { id: 1, name: 'Bolsão Prioritário', userIds: [manager.users[0]?.matricula].filter(Boolean) },
-        { id: 2, name: 'Bolsão Análise Simples', userIds: [] }
+        { id: 1, name: 'Bolsão Prioritário', userIds: manager.users.filter(u => u.bolsao === 'Bolsão Prioritário').map(u => u.matricula) },
+        { id: 2, name: 'Bolsão Análise Simples', userIds: manager.users.filter(u => u.bolsao === 'Bolsão Análise Simples').map(u => u.matricula) }
     ]);
     const [selectedBolsaoId, setSelectedBolsaoId] = useState<number>(1);
     const [activeTab, setActiveTab] = useState<'users' | 'filters'>('users');
+    const [selectedAnalystIds, setSelectedAnalystIds] = useState<string[]>([]);
+    const [analystSelectorOpen, setAnalystSelectorOpen] = useState(false);
+    const [analystSearchTerm, setAnalystSearchTerm] = useState('');
+    const analystSelectorRef = useRef<HTMLDivElement>(null);
+    
+    const [editingBolsaoId, setEditingBolsaoId] = useState<number | null>(null);
+    const [editingBolsaoName, setEditingBolsaoName] = useState('');
+    const bolsaoInputRef = useRef<HTMLInputElement>(null);
+
+    // State for Dossie distribution tab
+    const [searchedDossies, setSearchedDossies] = useState<Document[]>([]);
 
     const selectedBolsao = bolsoes.find(b => b.id === selectedBolsaoId);
+    
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (analystSelectorRef.current && !analystSelectorRef.current.contains(event.target as Node)) {
+                setAnalystSelectorOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [analystSelectorRef]);
 
-    // Helpers
+    useEffect(() => {
+        if (editingBolsaoId !== null && bolsaoInputRef.current) {
+            bolsaoInputRef.current.focus();
+            bolsaoInputRef.current.select();
+        }
+    }, [editingBolsaoId]);
+
+    useEffect(() => {
+        setSelectedAnalystIds([]);
+        setSearchedDossies([]); // Clear search results when changing bolsao
+    }, [selectedBolsaoId]);
+
+    const handleRenameBolsao = () => {
+        if (editingBolsaoId === null || !editingBolsaoName.trim()) {
+            setEditingBolsaoId(null);
+            return;
+        }
+        setBolsoes(bolsoes.map(b => 
+            b.id === editingBolsaoId ? { ...b, name: editingBolsaoName.trim() } : b
+        ));
+        setEditingBolsaoId(null);
+    };
+
     const handleCreateBolsao = () => {
         const newId = Math.max(...bolsoes.map(b => b.id), 0) + 1;
-        const newBolsao: Bolsao = { id: newId, name: `Novo Bolsão ${newId}`, userIds: [] };
+        const newName = `Novo Bolsão ${newId}`;
+        const newBolsao: Bolsao = { id: newId, name: newName, userIds: [] };
         setBolsoes([...bolsoes, newBolsao]);
         setSelectedBolsaoId(newId);
         setActiveTab('users');
+        setEditingBolsaoId(newId);
+        setEditingBolsaoName(newName);
     };
 
     const handleDeleteBolsao = (id: number) => {
-        if (bolsoes.length === 1) return; // Prevent deleting last one for this demo
+        if (bolsoes.length === 1) return;
         const newBolsoes = bolsoes.filter(b => b.id !== id);
         setBolsoes(newBolsoes);
         if (selectedBolsaoId === id) {
@@ -42,36 +97,52 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
         }
     };
 
-    const handleUpdateName = (name: string) => {
-        setBolsoes(bolsoes.map(b => b.id === selectedBolsaoId ? { ...b, name } : b));
-    };
-
-    const handleAddUser = (matricula: string) => {
-        if (!selectedBolsao) return;
-        // Remove user from other bolsoes first to ensure 1-to-1 relationship
+    const handleAddSelectedUsers = () => {
+        if (!selectedBolsao || selectedAnalystIds.length === 0) return;
         const updatedBolsoes = bolsoes.map(b => {
+            const remainingUserIds = b.userIds.filter(id => !selectedAnalystIds.includes(id));
             if (b.id === selectedBolsaoId) {
-                return { ...b, userIds: [...b.userIds, matricula] };
-            } else {
-                return { ...b, userIds: b.userIds.filter(id => id !== matricula) };
+                return { ...b, userIds: [...remainingUserIds, ...selectedAnalystIds] };
             }
+            return { ...b, userIds: remainingUserIds };
         });
         setBolsoes(updatedBolsoes);
+        setSelectedAnalystIds([]);
+        setAnalystSelectorOpen(false);
     };
 
     const handleRemoveUser = (matricula: string) => {
         setBolsoes(bolsoes.map(b => b.id === selectedBolsaoId ? { ...b, userIds: b.userIds.filter(id => id !== matricula) } : b));
     };
 
-    // Calculate available users (users currently in OTHER bolsoes are technically available to be moved, but we might want to visually indicate where they are)
-    // For the dropdown, let's show all users under this manager, but indicate their current status.
-    const getAvailableUsersForDropdown = () => {
-        return manager.users.filter(u => !selectedBolsao?.userIds.includes(u.matricula));
+    const availableUsersForSelection = useMemo(() => {
+        const allUserIdsInSomeBolsao = new Set(bolsoes.flatMap(b => b.userIds));
+        return manager.users.filter(u => !allUserIdsInSomeBolsao.has(u.matricula));
+    }, [manager.users, bolsoes]);
+
+    const filteredAvailableUsers = useMemo(() => {
+        return availableUsersForSelection.filter(user =>
+            user.nomeCompleto.toLowerCase().includes(analystSearchTerm.toLowerCase()) ||
+            user.matricula.toLowerCase().includes(analystSearchTerm.toLowerCase())
+        );
+    }, [availableUsersForSelection, analystSearchTerm]);
+
+    const handleToggleAnalystSelection = (matricula: string) => {
+        setSelectedAnalystIds(prev =>
+            prev.includes(matricula)
+                ? prev.filter(id => id !== matricula)
+                : [...prev, matricula]
+        );
+    };
+    
+    const handleSaveRules = () => {
+        // In a real app, this would save filters and then fetch matching documents.
+        // Here, we just load mock data to display the result.
+        setSearchedDossies(availableDocsData);
     };
 
     return (
         <div className="bg-white rounded-lg shadow-xl w-full h-[85vh] flex flex-col overflow-hidden">
-            {/* Header */}
             <header className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
                 <div className="flex flex-col">
                     <h2 className="text-xl font-semibold text-gray-800">Gestão de Filas e Bolsões</h2>
@@ -83,7 +154,6 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
             </header>
 
             <div className="flex flex-grow overflow-hidden">
-                {/* Sidebar: List of Bolsões */}
                 <aside className="w-1/4 min-w-[250px] border-r bg-gray-50 flex flex-col">
                     <div className="p-4 border-b flex justify-between items-center bg-white">
                         <span className="font-semibold text-gray-700">Meus Bolsões</span>
@@ -99,11 +169,35 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                         {bolsoes.map(bolsao => (
                             <div 
                                 key={bolsao.id}
-                                onClick={() => setSelectedBolsaoId(bolsao.id)}
+                                onClick={() => { if(editingBolsaoId !== bolsao.id) setSelectedBolsaoId(bolsao.id) }}
                                 className={`p-3 rounded-md cursor-pointer flex justify-between items-center transition-colors ${selectedBolsaoId === bolsao.id ? 'bg-white border-l-4 border-[#005c9e] shadow-sm' : 'hover:bg-gray-100 text-gray-600'}`}
                             >
-                                <div className="truncate pr-2">
-                                    <div className={`font-medium ${selectedBolsaoId === bolsao.id ? 'text-[#005c9e]' : ''}`}>{bolsao.name}</div>
+                                <div className="truncate pr-2 w-full">
+                                    {editingBolsaoId === bolsao.id ? (
+                                        <input
+                                            ref={bolsaoInputRef}
+                                            type="text"
+                                            value={editingBolsaoName}
+                                            onChange={(e) => setEditingBolsaoName(e.target.value)}
+                                            onBlur={handleRenameBolsao}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleRenameBolsao();
+                                                if (e.key === 'Escape') setEditingBolsaoId(null);
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="font-medium text-[#005c9e] bg-white border border-[#005c9e] rounded px-1 w-full text-sm"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={`font-medium ${selectedBolsaoId === bolsao.id ? 'text-[#005c9e]' : ''}`}
+                                            onDoubleClick={() => {
+                                                setEditingBolsaoId(bolsao.id);
+                                                setEditingBolsaoName(bolsao.name);
+                                            }}
+                                        >
+                                            {bolsao.name}
+                                        </div>
+                                    )}
                                     <div className="text-xs text-gray-400">{bolsao.userIds.length} analista(s)</div>
                                 </div>
                             </div>
@@ -111,21 +205,14 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                     </div>
                 </aside>
 
-                {/* Main Content: Details of Selected Bolsão */}
                 <main className="flex-grow flex flex-col bg-white">
                     {selectedBolsao ? (
                         <>
-                            {/* Toolbar / Tabs */}
                             <div className="border-b px-6 pt-6 pb-0 bg-white">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="w-1/2">
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nome do Bolsão</label>
-                                        <input 
-                                            type="text" 
-                                            value={selectedBolsao.name}
-                                            onChange={(e) => handleUpdateName(e.target.value)}
-                                            className="text-2xl font-bold text-gray-800 border-b border-transparent hover:border-gray-300 focus:border-[#005c9e] focus:outline-none w-full bg-transparent transition-colors"
-                                        />
+                                        <h2 className="text-2xl font-bold text-gray-800">{selectedBolsao.name}</h2>
                                     </div>
                                     <button 
                                         onClick={() => handleDeleteBolsao(selectedBolsao.id)}
@@ -154,50 +241,64 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                 </div>
                             </div>
 
-                            {/* Tab Content */}
                             <div className="flex-grow overflow-y-auto bg-gray-50 p-6">
                                 {activeTab === 'users' && (
                                     <div className="max-w-4xl mx-auto space-y-6">
-                                        
-                                        {/* Add User Section */}
                                         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                                             <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase">Adicionar Analista ao Bolsão</h3>
-                                            <div className="flex space-x-2">
-                                                <div className="relative flex-grow">
-                                                    <select 
-                                                        className="w-full p-2.5 border border-gray-300 rounded-md appearance-none bg-white focus:ring-2 focus:ring-[#005c9e] focus:border-transparent outline-none"
-                                                        onChange={(e) => {
-                                                            if (e.target.value) {
-                                                                handleAddUser(e.target.value);
-                                                                e.target.value = '';
-                                                            }
-                                                        }}
+                                            <div className="flex space-x-2 items-start">
+                                                <div className="relative flex-grow" ref={analystSelectorRef}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAnalystSelectorOpen(!analystSelectorOpen)}
+                                                        className="w-full p-2.5 border border-gray-300 rounded-md bg-white flex justify-between items-center text-left focus:ring-2 focus:ring-[#005c9e] focus:border-transparent outline-none"
                                                     >
-                                                        <option value="">Selecione um analista para mover para este bolsão...</option>
-                                                        {getAvailableUsersForDropdown().map(user => {
-                                                            // Find if user belongs to another bolsao
-                                                            const currentBolsao = bolsoes.find(b => b.userIds.includes(user.matricula));
-                                                            const label = user.nomeCompleto;
-                                                            const subLabel = currentBolsao ? `(Atualmente em: ${currentBolsao.name})` : '(Sem bolsão)';
-                                                            
-                                                            return (
-                                                                <option key={user.matricula} value={user.matricula}>
-                                                                    {label} - {subLabel}
-                                                                </option>
-                                                            );
-                                                        })}
-                                                    </select>
-                                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                                                        <ChevronDownIcon className="h-4 w-4"/>
-                                                    </div>
+                                                        <span className={selectedAnalystIds.length > 0 ? "text-gray-800" : "text-gray-500"}>
+                                                            {selectedAnalystIds.length > 0 ? `${selectedAnalystIds.length} analista(s) selecionado(s)` : 'Selecione um ou mais analistas...'}
+                                                        </span>
+                                                        <ChevronDownIcon className={`h-4 w-4 text-gray-600 transition-transform ${analystSelectorOpen ? 'rotate-180' : ''}`} />
+                                                    </button>
+                                                    {analystSelectorOpen && (
+                                                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden flex flex-col">
+                                                            <div className="p-2 border-b">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Buscar por nome ou matrícula..."
+                                                                    value={analystSearchTerm}
+                                                                    onChange={e => setAnalystSearchTerm(e.target.value)}
+                                                                    className="w-full px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                />
+                                                            </div>
+                                                            <ul className="overflow-y-auto flex-grow text-gray-800">
+                                                                {filteredAvailableUsers.length > 0 ? filteredAvailableUsers.map(user => (
+                                                                    <li key={user.matricula} className="p-2 hover:bg-blue-50 cursor-pointer flex items-center" onClick={() => handleToggleAnalystSelection(user.matricula)}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            readOnly
+                                                                            checked={selectedAnalystIds.includes(user.matricula)}
+                                                                            className="h-4 w-4 rounded border-gray-300 text-[#005c9e] focus:ring-[#005c9e] mr-3 pointer-events-none"
+                                                                        />
+                                                                        <div className="w-full cursor-pointer select-none">
+                                                                            <p className="font-medium text-gray-900">{user.nomeCompleto}</p>
+                                                                            <p className="text-xs text-gray-500">(Sem bolsão)</p>
+                                                                        </div>
+                                                                    </li>
+                                                                )) : (
+                                                                    <li className="p-3 text-sm text-center text-gray-500">Nenhum analista disponível.</li>
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                    )}
                                                 </div>
+                                                <button
+                                                    onClick={handleAddSelectedUsers}
+                                                    disabled={selectedAnalystIds.length === 0}
+                                                    className="px-4 py-2.5 bg-[#005c9e] text-white rounded-md hover:bg-[#004a7c] disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0 transition-colors"
+                                                >
+                                                    Adicionar
+                                                </button>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-2">
-                                                Nota: Ao adicionar um analista que já pertence a outro bolsão, ele será movido automaticamente para este.
-                                            </p>
                                         </div>
-
-                                        {/* List of Users in this Bolsao */}
                                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                             <table className="min-w-full divide-y divide-gray-200">
                                                 <thead className="bg-gray-50">
@@ -250,47 +351,50 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                             Os documentos que corresponderem aos filtros abaixo serão automaticamente direcionados para a fila deste bolsão.
                                         </p>
                                         
-                                        {/* Reusing the exact grid layout requested previously */}
                                         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mb-4">
-                                            <div className="col-span-full">
-                                                <div className="relative">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <SearchIcon className="h-5 w-5 text-gray-400"/>
-                                                    </div>
-                                                    <input type="text" placeholder="Buscar documentos por palavras-chave..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors"/>
-                                                </div>
-                                            </div>
                                             <div className="lg:col-span-3"><SelectInput label="Grupo Credor" /></div>
                                             <div className="lg:col-span-3"><SelectInput label="Agente Financeiro" /></div>
                                             <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
                                             <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
-                                            
                                             <div className="lg:col-span-2"><SelectInput label="Categoria" /></div>
                                             <div className="lg:col-span-2"><SelectInput label="Status" /></div>
                                             <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
                                             <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
                                             <div className="lg:col-span-2"><TextInput label="OR" /></div>
                                             <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
-
                                             <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
                                             <div className="lg:col-span-3"><TextInput label="IM" /></div>
                                             <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
                                             <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
-
                                             <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
                                             <div className="lg:col-span-4"><DateInput label="até" /></div>
                                             <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
-
                                             <div className="col-span-full flex justify-end items-end space-x-2 pt-4 border-t mt-2">
                                                 <button className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
                                                     <ResetIcon className="h-4 w-4 mr-2" />
                                                     Limpar Filtros
                                                 </button>
-                                                <button className="flex items-center px-6 py-2 text-white bg-[#005c9e] hover:bg-[#004a7c] rounded-md shadow-sm transition-colors">
+                                                <button 
+                                                    onClick={handleSaveRules}
+                                                    className="flex items-center px-6 py-2 text-white bg-[#005c9e] hover:bg-[#004a7c] rounded-md shadow-sm transition-colors"
+                                                >
                                                     Salvar Regras
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {searchedDossies.length > 0 && (
+                                            <div className="border-t pt-4 mt-6">
+                                                <h3 className="text-base font-medium text-gray-800 mb-3">Dossiês correspondentes a esta regra:</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {searchedDossies.map(doc => (
+                                                        <div key={doc.id} className="bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full border border-blue-200">
+                                                            ID: {doc.id}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -306,7 +410,6 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
     );
 };
 
-// Reused Input Components
 const TextInput: React.FC<{ label?: string }> = ({ label }) => (
     <div>
         {label && <label className="block text-gray-500 mb-1 text-xs font-medium">{label}</label>}
