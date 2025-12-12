@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Manager, User, Document } from '../types';
+import { Manager, User, Document, Bolsao } from '../types';
 import { CloseIcon, SearchIcon, ChevronDownIcon, CalendarIcon, ResetIcon, PlusIcon, TrashIcon, UsersIcon, FileTextIcon } from './Icons';
+import DeleteBolsaoModal from './DeleteBolsaoModal';
 
 // Mock data, same as in DocumentAssignment for consistency
 const availableDocsData: Document[] = [
@@ -15,12 +16,6 @@ const availableDocsData: Document[] = [
 interface QueueManagementProps {
   manager: Manager;
   onBack: () => void;
-}
-
-interface Bolsao {
-    id: number;
-    name: string;
-    userIds: string[]; // List of user matriculas
 }
 
 const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) => {
@@ -39,8 +34,16 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
     const [editingBolsaoName, setEditingBolsaoName] = useState('');
     const bolsaoInputRef = useRef<HTMLInputElement>(null);
 
+    // Drag and Drop state
+    const dragItem = useRef<number | null>(null);
+    const dragOverItem = useRef<number | null>(null);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
     // State for Dossie distribution tab
     const [searchedDossies, setSearchedDossies] = useState<Document[]>([]);
+
+    // State for delete confirmation modal
+    const [bolsaoToDelete, setBolsaoToDelete] = useState<Bolsao | null>(null);
 
     const selectedBolsao = bolsoes.find(b => b.id === selectedBolsaoId);
     
@@ -97,6 +100,13 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
         }
     };
 
+    const handleConfirmDelete = () => {
+        if (bolsaoToDelete) {
+            handleDeleteBolsao(bolsaoToDelete.id);
+        }
+        setBolsaoToDelete(null);
+    };
+
     const handleAddSelectedUsers = () => {
         if (!selectedBolsao || selectedAnalystIds.length === 0) return;
         const updatedBolsoes = bolsoes.map(b => {
@@ -141,6 +151,34 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
         setSearchedDossies(availableDocsData);
     };
 
+    // Drag and Drop Handlers
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        dragItem.current = index;
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        dragOverItem.current = index;
+    };
+
+    const handleDrop = () => {
+        if (dragItem.current === null || dragOverItem.current === null || dragItem.current === dragOverItem.current) {
+            return;
+        }
+        const newBolsoes = [...bolsoes];
+        const dragItemContent = newBolsoes[dragItem.current];
+        newBolsoes.splice(dragItem.current, 1);
+        newBolsoes.splice(dragOverItem.current, 0, dragItemContent);
+        setBolsoes(newBolsoes);
+    };
+
+    const handleDragEnd = () => {
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setDraggedIndex(null);
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-xl w-full h-[85vh] flex flex-col overflow-hidden">
             <header className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
@@ -165,12 +203,20 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                             <PlusIcon className="h-4 w-4" />
                         </button>
                     </div>
-                    <div className="flex-grow overflow-y-auto p-2 space-y-2">
-                        {bolsoes.map(bolsao => (
+                    <div className="flex-grow overflow-y-auto p-2 space-y-2" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+                        {bolsoes.map((bolsao, index) => (
                             <div 
                                 key={bolsao.id}
+                                draggable={bolsoes.length > 1}
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragEnter={(e) => handleDragEnter(e, index)}
+                                onDragEnd={handleDragEnd}
                                 onClick={() => { if(editingBolsaoId !== bolsao.id) setSelectedBolsaoId(bolsao.id) }}
-                                className={`p-3 rounded-md cursor-pointer flex justify-between items-center transition-colors ${selectedBolsaoId === bolsao.id ? 'bg-white border-l-4 border-[#005c9e] shadow-sm' : 'hover:bg-gray-100 text-gray-600'}`}
+                                className={`p-3 rounded-md flex justify-between items-center transition-all 
+                                    ${selectedBolsaoId === bolsao.id ? 'bg-white border-l-4 border-[#005c9e] shadow-sm' : 'hover:bg-gray-100 text-gray-600'}
+                                    ${draggedIndex === index ? 'opacity-40' : 'opacity-100'}
+                                    ${bolsoes.length > 1 ? 'cursor-move' : 'cursor-pointer'}
+                                `}
                             >
                                 <div className="truncate pr-2 w-full">
                                     {editingBolsaoId === bolsao.id ? (
@@ -191,9 +237,12 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                         <div
                                             className={`font-medium ${selectedBolsaoId === bolsao.id ? 'text-[#005c9e]' : ''}`}
                                             onDoubleClick={() => {
-                                                setEditingBolsaoId(bolsao.id);
-                                                setEditingBolsaoName(bolsao.name);
+                                                if (bolsoes.length > 1) {
+                                                    setEditingBolsaoId(bolsao.id);
+                                                    setEditingBolsaoName(bolsao.name);
+                                                }
                                             }}
+                                            title={bolsoes.length > 1 ? "Duplo clique para renomear" : ""}
                                         >
                                             {bolsao.name}
                                         </div>
@@ -215,7 +264,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                         <h2 className="text-2xl font-bold text-gray-800">{selectedBolsao.name}</h2>
                                     </div>
                                     <button 
-                                        onClick={() => handleDeleteBolsao(selectedBolsao.id)}
+                                        onClick={() => setBolsaoToDelete(selectedBolsao)}
                                         className="text-red-500 hover:text-red-700 text-sm flex items-center space-x-1 px-3 py-2 rounded-md hover:bg-red-50"
                                     >
                                         <TrashIcon className="h-4 w-4" />
@@ -406,6 +455,12 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                     )}
                 </main>
             </div>
+            <DeleteBolsaoModal
+                isOpen={!!bolsaoToDelete}
+                onClose={() => setBolsaoToDelete(null)}
+                onConfirm={handleConfirmDelete}
+                bolsao={bolsaoToDelete}
+            />
         </div>
     );
 };

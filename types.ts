@@ -43,3 +43,9 @@ export interface UserProfile {
     name: string;
     role: 'analyst' | 'manager';
 }
+
+export interface Bolsao {
+    id: number;
+    name: string;
+    userIds: string[];
+}
