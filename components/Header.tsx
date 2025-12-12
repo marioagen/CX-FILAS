@@ -60,7 +60,6 @@ const Header: React.FC<HeaderProps> = ({ onPageChange, userProfile, onToggleProf
           </div>
           <div className="text-right">
             <p className="font-semibold text-sm">mario@sophie.chat</p>
-            <p className="text-xs text-gray-200">mario@sophie.chat</p>
           </div>
         </div>
         <div className="text-right">

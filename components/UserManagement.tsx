@@ -326,7 +326,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                                             {getSortIcon('bolsao')}
                                         </div>
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('docsAtribuidos')}>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[400px]" onClick={() => handleSort('docsAtribuidos')}>
                                         <div className="flex items-center space-x-1">
                                             <span>Docs. atribuídos</span>
                                             {getSortIcon('docsAtribuidos')}
@@ -339,7 +339,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {sortedUsers.map((user) => (
-                                    <tr key={user.matricula} className="hover:bg-gray-50">
+                                    <tr key={user.matricula} className="hover:bg-gray-50 align-top">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{user.matricula}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{user.nomeCompleto}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
@@ -353,20 +353,17 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                                                 <span className="text-gray-400 italic text-xs">Não atribuído</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                                        <td className="px-6 py-4 text-sm text-gray-800">
                                             {Array.isArray(user.docsAtribuidos) ? (
-                                                <div className="flex items-center space-x-2">
+                                                <div className="flex flex-col space-y-1">
                                                     {user.docsAtribuidos.slice(0, 2).map((doc) => (
-                                                        <div key={doc.id} className="bg-[#e6f2fa] text-[#005c9e] rounded-md px-2 py-1 text-xs flex items-center space-x-1.5 border border-[#b3d7f0]">
-                                                            <span><span className="font-bold">{doc.id}</span></span>
-                                                            <button className="hover:text-red-600">
-                                                                <CloseIcon className="h-3 w-3" />
-                                                            </button>
+                                                        <div key={doc.id} className="text-xs truncate" title={`${doc.id} - ${doc.name}`}>
+                                                            {`${doc.id} - ${doc.name}`}
                                                         </div>
                                                     ))}
                                                     {user.docsAtribuidos.length > 2 && (
-                                                        <div className="bg-gray-100 text-gray-500 rounded-md px-2 py-1 text-xs font-medium">
-                                                            (+{user.docsAtribuidos.length - 2})
+                                                        <div className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5 w-fit font-medium" title="Mais documentos atribuídos">
+                                                            {`(+${user.docsAtribuidos.length - 2}...)`}
                                                         </div>
                                                     )}
                                                 </div>
