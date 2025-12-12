@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Manager, User, Document, Bolsao } from '../types';
 import { CloseIcon, SearchIcon, ChevronDownIcon, CalendarIcon, ResetIcon, PlusIcon, TrashIcon, UsersIcon, FileTextIcon } from './Icons';
 import DeleteBolsaoModal from './DeleteBolsaoModal';
+import RemoveUserModal from './RemoveUserModal';
 
 // Mock data, same as in DocumentAssignment for consistency
 const availableDocsData: Document[] = [
@@ -44,6 +45,9 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
 
     // State for delete confirmation modal
     const [bolsaoToDelete, setBolsaoToDelete] = useState<Bolsao | null>(null);
+    
+    // State for user removal confirmation modal
+    const [userToRemove, setUserToRemove] = useState<User | null>(null);
 
     const selectedBolsao = bolsoes.find(b => b.id === selectedBolsaoId);
     
@@ -121,8 +125,15 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
         setAnalystSelectorOpen(false);
     };
 
-    const handleRemoveUser = (matricula: string) => {
-        setBolsoes(bolsoes.map(b => b.id === selectedBolsaoId ? { ...b, userIds: b.userIds.filter(id => id !== matricula) } : b));
+    const handleRemoveUserClick = (user: User) => {
+        setUserToRemove(user);
+    };
+
+    const handleConfirmRemoveUser = () => {
+        if (userToRemove && selectedBolsaoId) {
+             setBolsoes(bolsoes.map(b => b.id === selectedBolsaoId ? { ...b, userIds: b.userIds.filter(id => id !== userToRemove.matricula) } : b));
+             setUserToRemove(null);
+        }
     };
 
     const availableUsersForSelection = useMemo(() => {
@@ -370,7 +381,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                                         <button 
-                                                                            onClick={() => handleRemoveUser(userId)}
+                                                                            onClick={() => handleRemoveUserClick(user)}
                                                                             className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1.5 rounded-md transition-colors"
                                                                             title="Remover do bolsão"
                                                                         >
@@ -460,6 +471,13 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                 onClose={() => setBolsaoToDelete(null)}
                 onConfirm={handleConfirmDelete}
                 bolsao={bolsaoToDelete}
+            />
+            <RemoveUserModal 
+                isOpen={!!userToRemove}
+                onClose={() => setUserToRemove(null)}
+                onConfirm={handleConfirmRemoveUser}
+                user={userToRemove}
+                bolsaoName={selectedBolsao?.name}
             />
         </div>
     );
