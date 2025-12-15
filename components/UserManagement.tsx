@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Manager, User, AssignedDoc } from '../types';
+import { Manager, User, AssignedDoc, Bolsao } from '../types';
 import { SearchIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, AssignIcon, CloseIcon, SlidersIcon, FileTextIcon } from './Icons';
 import DocumentAssignment from './DocumentAssignment';
 import QueueManagement from './QueueManagement';
@@ -69,17 +69,20 @@ const UserManagement: React.FC = () => {
   const [openManagerId, setOpenManagerId] = useState<number | null>(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [managingQueueFor, setManagingQueueFor] = useState<Manager | null>(null);
+  const [managedBolsoes, setManagedBolsoes] = useState<Bolsao[] | undefined>(undefined);
 
   const toggleManager = (id: number) => {
     setOpenManagerId(openManagerId === id ? null : id);
   };
 
-  const handleAssignClick = (user: User) => {
+  const handleAssignClick = (user: User, bolsoes?: Bolsao[]) => {
     setSelectedUser(user);
+    setManagedBolsoes(bolsoes);
   };
 
   const handleBack = () => {
     setSelectedUser(null);
+    setManagedBolsoes(undefined);
   };
 
   const handleManageQueueClick = (manager: Manager) => {
@@ -95,7 +98,7 @@ const UserManagement: React.FC = () => {
   }
 
   if (selectedUser) {
-    return <DocumentAssignment user={selectedUser} onBack={handleBack} />;
+    return <DocumentAssignment user={selectedUser} onBack={handleBack} managedBolsoes={managedBolsoes} />;
   }
 
   return (
@@ -155,7 +158,7 @@ interface AccordionItemProps {
     manager: Manager;
     isOpen: boolean;
     onToggle: () => void;
-    onAssignClick: (user: User) => void;
+    onAssignClick: (user: User, bolsoes?: Bolsao[]) => void;
     onManageQueueClick: (manager: Manager) => void;
 }
 
@@ -227,7 +230,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
         <div className="border border-gray-200 rounded-lg">
             <button
                 onClick={onToggle}
-                className="w-full flex justify-between items-center p-4 bg-[#e6f2fa] rounded-t-lg"
+                className="w-full flex justify-between items-center p-4 bg-[#e6f2fa] rounded-t-lg transition-colors hover:bg-[#d9ebf7]"
             >
                 <div className="flex items-center space-x-3">
                     {isOpen ? <ChevronUpIcon className="h-5 w-5 text-[#005c9e]" /> : <ChevronDownIcon className="h-5 w-5 text-[#005c9e]" />}
@@ -236,15 +239,33 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                 </div>
                 <div className="flex items-center space-x-2">
                     <button 
-                      className="bg-gray-600 text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-gray-700 transition-colors"
+                      className="bg-gray-600 text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-gray-700 active:scale-95 transition-all"
                       onClick={(e) => { e.stopPropagation(); onManageQueueClick(manager); }}
                     >
                         <SlidersIcon className="h-4 w-4" />
                         <span>Gerenciar Fila & Bolsões</span>
                     </button>
                     <button 
-                      className="bg-[#005c9e] text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-[#004a7c] transition-colors"
-                      onClick={(e) => { e.stopPropagation(); onAssignClick(manager.users[0]); }}
+                      className="bg-[#005c9e] text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-[#004a7c] active:scale-95 transition-all"
+                      onClick={(e) => { 
+                          e.stopPropagation(); 
+                          // Construct a temporary User object for the Manager so the title is correct on the next screen
+                          const managerAsUser: User = {
+                              matricula: `GEST-${manager.id}`,
+                              nomeCompleto: manager.name,
+                              email: 'gestor@caixa.gov.br',
+                              local: 'Matriz',
+                              docsAtribuidos: [],
+                              bolsao: 'Gestão'
+                          };
+                          // Construct Bolsao objects for the manager's view
+                          const bolsoes: Bolsao[] = uniqueBolsoes.map((name, idx) => ({
+                              id: idx + 1,
+                              name: name,
+                              userIds: [] 
+                          }));
+                          onAssignClick(managerAsUser, bolsoes); 
+                      }}
                     >
                         <AssignIcon className="h-4 w-4" />
                         <span>Atribuir bolsão</span>
@@ -339,7 +360,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {sortedUsers.map((user) => (
-                                    <tr key={user.matricula} className="hover:bg-gray-50 align-top">
+                                    <tr key={user.matricula} className="hover:bg-gray-50 align-top transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{user.matricula}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{user.nomeCompleto}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
@@ -373,7 +394,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <button 
-                                              className="bg-white border border-[#005c9e] text-[#005c9e] hover:bg-[#e6f2fa] px-3 py-1.5 rounded-md flex items-center space-x-1.5 text-xs transition-colors"
+                                              className="bg-white border border-[#005c9e] text-[#005c9e] hover:bg-[#e6f2fa] active:scale-95 px-3 py-1.5 rounded-md flex items-center space-x-1.5 text-xs transition-all"
                                               onClick={(e) => { e.stopPropagation(); onAssignClick(user); }}
                                             >
                                                 <AssignIcon className="h-3.5 w-3.5" />
@@ -395,7 +416,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                     <div className="p-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600 border-t border-gray-100">
                          <div className="flex items-center space-x-2 mb-2 sm:mb-0">
                             <span>Mostrar</span>
-                            <select className="border border-gray-300 rounded-md px-2 py-1 text-center bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#005c9e]">
+                            <select className="border border-gray-300 rounded-md px-2 py-1 text-center bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#005c9e] transition-shadow">
                                 <option>10</option>
                                 <option>25</option>
                                 <option>50</option>

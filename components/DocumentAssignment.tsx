@@ -1,21 +1,26 @@
 
-import React, { useState, useMemo } from 'react';
-import { User, Document } from '../types';
-import { CloseIcon, SearchIcon, TrashIcon, ChevronDownIcon, CalendarIcon, ResetIcon, DownloadIcon, UploadIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, ListIcon, LayoutGridIcon } from './Icons';
+import React, { useState, useMemo, useEffect } from 'react';
+import { User, Document, Bolsao, AssignedDoc } from '../types';
+import { CloseIcon, SearchIcon, TrashIcon, ChevronDownIcon, CalendarIcon, ResetIcon, DownloadIcon, UploadIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, ListIcon, LayoutGridIcon, AssignIcon, FileTextIcon } from './Icons';
 import MultiSelect from './MultiSelect';
 
 interface DocumentAssignmentProps {
   user: User;
   onBack: () => void;
+  managedBolsoes?: Bolsao[];
 }
 
-const assignedDocsData = [
+interface AssignedDocWithBolsao extends AssignedDoc {
+    bolsaoId?: number;
+}
+
+const initialAssignedDocs: AssignedDocWithBolsao[] = [
     { id: '535', name: '02105164179_00024_1304001403211_1.pdf' },
     { id: '536', name: '05114601576_24_2904000702413_1.pdf' },
     { id: '542', name: '97101_9001319718908_00024_1347000904229_1.pdf' },
 ];
 
-const availableDocsData: Document[] = [
+const initialAvailableDocs: Document[] = [
     { id: '472', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Simplificada', stat: 'Em Análise (Simplificada)', dtAssin: '18/06/1986 00:00:00', mut: 'DORIA VANIA NUNES BARBOSA LIMA', tipoEvt: 'L13', or: '32', planReaj: 'EQ1 1 P 01 CTP', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Prioritário' },
     { id: '472-2', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Simplificada', stat: 'Em Análise (Simplificada)', dtAssin: '18/06/1986 00:00:00', mut: 'DORIA VANIA NUNES BARBOSA LIMA', tipoEvt: 'L13', or: '32', planReaj: 'EQ1 1 P 01 CTP', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Prioritário' },
     { id: '474', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Completa', stat: 'Em Análise (Completa)', dtAssin: '13/09/1984 00:00:00', mut: 'MARICELIA MORAIS FREITAS', tipoEvt: 'L13', or: '32', planReaj: 'PES A 4 A 07 SMH', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Análise Simples' },
@@ -28,16 +33,43 @@ const availableDocsData: Document[] = [
 type SortKey = keyof Document | 'filaOrigem';
 type SortDirection = 'asc' | 'desc';
 
-const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack }) => {
+const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack, managedBolsoes }) => {
     const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
     const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: 'id', direction: 'asc' });
     
+    // State for data management
+    const [assignedDocs, setAssignedDocs] = useState<AssignedDocWithBolsao[]>(initialAssignedDocs);
+    const [availableDocs, setAvailableDocs] = useState<Document[]>(initialAvailableDocs);
+    const [selectedDossierIds, setSelectedDossierIds] = useState<string[]>([]);
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+    
+    // Modal State
+    const [assignModalOpen, setAssignModalOpen] = useState(false);
+    const [targetBolsaoId, setTargetBolsaoId] = useState<number | null>(null);
+
     const grupoCredorOptions = [ 'Bancos Privados', 'COHAB', 'CAIXA', 'Entes Públicos', 'Liquidandas', 'Outros' ];
     const agenteFinanceiroOptions = [ '22000 - BANCO UBS PACTUAL / PREVISUL', '22001 - BANCO ITAÚ / BANESTADO', '50013 - BANCO DE CRÉITO NACIONAL S/A - BCN S/A', '50048 - BANCO SANTANDER BRASIL S/A', '50137 - BANCO REAL S/A' ];
     const categoriaOptions = [ 'AJ - Cumprimento', 'AJ - Subsídio', 'Pedidos GECVS', 'Ofício Vencido', 'Pedido AF', 'Reanálise (Inadequado AUDIR)' ];
 
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
+
+    // Distribute mock assigned docs to bolsões for demo purposes if not already set
+    useEffect(() => {
+        if (managedBolsoes && managedBolsoes.length > 0) {
+            setAssignedDocs(prev => prev.map((doc, idx) => ({
+                ...doc,
+                bolsaoId: doc.bolsaoId || managedBolsoes[idx % managedBolsoes.length].id
+            })));
+        }
+    }, [managedBolsoes]);
+
     const sortedDocs = useMemo(() => {
-        let sortableItems = [...availableDocsData];
+        let sortableItems = [...availableDocs];
         if (sortConfig.key) {
             sortableItems.sort((a, b) => {
                 let aValue: string | number | undefined;
@@ -59,7 +91,7 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
             });
         }
         return sortableItems;
-    }, [sortConfig]);
+    }, [sortConfig, availableDocs]);
 
     const handleSort = (key: SortKey) => {
         let direction: SortDirection = 'asc';
@@ -69,49 +101,227 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
         setSortConfig({ key, direction });
     };
 
+    const handleToggleSelectAll = () => {
+        if (selectedDossierIds.length === availableDocs.length && availableDocs.length > 0) {
+            setSelectedDossierIds([]);
+        } else {
+            setSelectedDossierIds(availableDocs.map(d => d.id));
+        }
+    };
+
+    const handleToggleSelectOne = (id: string) => {
+        if (selectedDossierIds.includes(id)) {
+            setSelectedDossierIds(prev => prev.filter(item => item !== id));
+        } else {
+            setSelectedDossierIds(prev => [...prev, id]);
+        }
+    };
+
+    const handleAssignClick = () => {
+        if (selectedDossierIds.length === 0) return;
+
+        if (managedBolsoes && managedBolsoes.length > 0) {
+            setTargetBolsaoId(managedBolsoes[0].id); // Default to first
+            setAssignModalOpen(true);
+        } else {
+            performAssign();
+        }
+    };
+
+    const performAssign = (bolsaoId?: number) => {
+        const docsToAssign = availableDocs.filter(d => selectedDossierIds.includes(d.id));
+        const formattedAssigned = docsToAssign.map(d => ({ 
+            id: d.id, 
+            name: d.nrDoc,
+            bolsaoId: bolsaoId 
+        }));
+        
+        setAssignedDocs(prev => [...prev, ...formattedAssigned]);
+        setAvailableDocs(prev => prev.filter(d => !selectedDossierIds.includes(d.id)));
+        
+        const bolsaoName = managedBolsoes?.find(b => b.id === bolsaoId)?.name;
+        const msg = bolsaoName 
+            ? `${docsToAssign.length} documento(s) atribuído(s) ao ${bolsaoName}.`
+            : `${docsToAssign.length} documento(s) atribuído(s) com sucesso.`;
+
+        setNotification({
+            message: msg,
+            type: 'success'
+        });
+        setSelectedDossierIds([]);
+        setAssignModalOpen(false);
+    };
+
+    const handleUnassign = (id: string) => {
+        const docToRemove = assignedDocs.find(d => d.id === id);
+        if (!docToRemove) return;
+
+        setAssignedDocs(prev => prev.filter(d => d.id !== id));
+        
+        const originalDetails = initialAvailableDocs.find(d => d.id === id);
+        if (originalDetails) {
+            setAvailableDocs(prev => [...prev, originalDetails]);
+        } else {
+             setAvailableDocs(prev => [...prev, {
+                 id: docToRemove.id,
+                 nrDoc: docToRemove.name,
+                 cat: 'Restaurado',
+                 stat: 'Pendente',
+                 dtAssin: '-',
+                 mut: 'Mutuário',
+                 tipoEvt: '-',
+                 or: '-',
+                 planReaj: '-',
+                 im: '-',
+                 fh2: 'Não',
+                 fh3: 'Não',
+                 cess: 'Não',
+                 cef: '0',
+                 codigoFh2: '-',
+                 gestor: 'Sistema',
+                 bolsao: 'Recuperado'
+             }]);
+        }
+    };
+
+    const handleUnassignAll = (bolsaoId?: number) => {
+        const docsToRestore = bolsaoId 
+            ? assignedDocs.filter(d => d.bolsaoId === bolsaoId)
+            : assignedDocs;
+            
+        const idsToRestore = docsToRestore.map(d => d.id);
+        
+        setAssignedDocs(prev => prev.filter(d => !idsToRestore.includes(d.id)));
+        
+        const restoredDocs: Document[] = [];
+        idsToRestore.forEach(id => {
+             const originalDetails = initialAvailableDocs.find(d => d.id === id);
+             if (originalDetails) restoredDocs.push(originalDetails);
+        });
+
+        setAvailableDocs(prev => [...prev, ...restoredDocs]);
+         setNotification({
+            message: `Documentos desatribuídos com sucesso.`,
+            type: 'info'
+        });
+    };
+
     return (
-        <div className="bg-white rounded-lg shadow-xl w-full flex flex-col">
-            <header className="flex justify-between items-center p-4 border-b">
+        <div className="bg-white rounded-lg shadow-xl w-full flex flex-col relative h-[85vh]">
+             {notification && (
+                <div className={`absolute top-4 right-4 z-50 p-3 rounded-md shadow-lg text-white font-medium transition-all duration-500 ease-in-out transform translate-y-0 ${notification.type === 'success' ? 'bg-green-600' : 'bg-blue-600'}`}>
+                    <div className="flex items-center space-x-2">
+                         {notification.type === 'success' && <div className="h-2 w-2 bg-white rounded-full"></div>}
+                         <span>{notification.message}</span>
+                    </div>
+                </div>
+            )}
+            <header className="flex justify-between items-center p-4 border-b flex-shrink-0">
                 <h2 className="text-xl font-semibold text-gray-800">Documentos para {user.nomeCompleto}</h2>
-                <button onClick={onBack} className="text-gray-500 hover:text-gray-800">
+                <button onClick={onBack} className="text-gray-500 hover:text-gray-800 transition-colors">
                     <CloseIcon className="h-6 w-6" />
                 </button>
             </header>
 
             <main className="flex-grow p-6 overflow-y-auto space-y-6 bg-gray-50">
                 {/* Documentos Atribuidos */}
-                <div className="bg-white p-4 rounded-md border">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium text-gray-700">Documentos Atribuídos</h3>
-                        <button className="bg-red-600 text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-red-700">
-                            <TrashIcon className="h-4 w-4" />
-                            <span>Desatribuir todos</span>
-                        </button>
-                    </div>
-                    <div className="flex items-center border rounded-md mb-4">
-                         <input type="text" placeholder="Buscar documentos..." className="w-full p-2 pl-3 focus:outline-none bg-gray-100 rounded-l-md text-gray-800 placeholder-gray-500"/>
-                         <button className="bg-blue-600 text-white p-2.5 rounded-r-md m-[-1px] border border-blue-600"><SearchIcon className="h-5 w-5" /></button>
-                    </div>
-                    <div className="space-y-2">
-                        {assignedDocsData.map(doc => (
-                            <div key={doc.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md text-sm text-gray-800">
-                                <span><span className="font-bold">{doc.id}</span> - {doc.name}</span>
-                                <button className="text-gray-500 hover:text-red-600"><CloseIcon className="h-5 w-5"/></button>
+                <div className="bg-white p-4 rounded-md border shadow-sm">
+                    {managedBolsoes && managedBolsoes.length > 0 ? (
+                        <>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-medium text-gray-700">Documentos Atribuídos por Bolsão</h3>
                             </div>
-                        ))}
-                    </div>
+                            <div className="grid grid-cols-1 gap-4">
+                                {managedBolsoes.map(bolsao => {
+                                    const docsInBolsao = assignedDocs.filter(d => d.bolsaoId === bolsao.id);
+                                    return (
+                                        <div key={bolsao.id} className="border rounded-md bg-gray-50 overflow-hidden">
+                                            <div className="bg-gray-100 p-3 border-b flex justify-between items-center">
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="font-semibold text-gray-700">{bolsao.name}</span>
+                                                    <span className="bg-[#005c9e] text-white text-xs px-2 py-0.5 rounded-full">{docsInBolsao.length}</span>
+                                                </div>
+                                                {docsInBolsao.length > 0 && (
+                                                     <button 
+                                                        onClick={() => handleUnassignAll(bolsao.id)}
+                                                        className="text-red-600 hover:text-red-800 text-xs font-medium flex items-center space-x-1"
+                                                    >
+                                                        <TrashIcon className="h-3 w-3" />
+                                                        <span>Limpar fila</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="p-2 space-y-2 max-h-40 overflow-y-auto">
+                                                {docsInBolsao.length > 0 ? docsInBolsao.map(doc => (
+                                                    <div key={doc.id} className="flex justify-between items-center p-2 bg-white border rounded-md text-sm text-gray-800 hover:shadow-sm transition-shadow group">
+                                                         <span className="truncate pr-2"><span className="font-bold text-[#005c9e]">{doc.id}</span> - {doc.name}</span>
+                                                         <button 
+                                                            onClick={() => handleUnassign(doc.id)}
+                                                            className="text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                                                            title="Remover documento"
+                                                        >
+                                                            <CloseIcon className="h-4 w-4"/>
+                                                        </button>
+                                                    </div>
+                                                )) : (
+                                                    <p className="text-center text-xs text-gray-400 py-2 italic">Nenhum documento nesta fila.</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-medium text-gray-700">Documentos Atribuídos ({assignedDocs.length})</h3>
+                                {assignedDocs.length > 0 && (
+                                    <button 
+                                        onClick={() => handleUnassignAll()}
+                                        className="bg-red-600 text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-red-700 active:bg-red-800 active:scale-95 transition-all"
+                                    >
+                                        <TrashIcon className="h-4 w-4" />
+                                        <span>Desatribuir todos</span>
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center border rounded-md mb-4 bg-gray-50">
+                                <input type="text" placeholder="Buscar documentos atribuídos..." className="w-full p-2 pl-3 focus:outline-none bg-transparent rounded-l-md text-gray-800 placeholder-gray-500"/>
+                                <button className="text-gray-500 p-2.5 hover:text-[#005c9e] transition-colors"><SearchIcon className="h-5 w-5" /></button>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {assignedDocs.length > 0 ? assignedDocs.map(doc => (
+                                    <div key={doc.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md text-sm text-gray-800 hover:bg-gray-200 transition-colors group">
+                                        <span className="truncate pr-2"><span className="font-bold text-[#005c9e]">{doc.id}</span> - {doc.name}</span>
+                                        <button 
+                                            onClick={() => handleUnassign(doc.id)}
+                                            className="text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                                            title="Remover documento"
+                                        >
+                                            <CloseIcon className="h-5 w-5"/>
+                                        </button>
+                                    </div>
+                                )) : (
+                                    <div className="text-center py-6 text-gray-500 text-sm italic bg-gray-50 rounded-md border border-dashed border-gray-300">
+                                        Nenhum documento atribuído.
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Lista de Documentos */}
-                <div className="bg-white p-4 rounded-md border">
-                    <h3 className="text-lg font-medium text-gray-700 mb-4">Lista de documentos</h3>
+                <div className="bg-white p-4 rounded-md border shadow-sm">
+                    <h3 className="text-lg font-medium text-gray-700 mb-4">Lista de documentos disponíveis</h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mb-4">
                         <div className="col-span-full">
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <SearchIcon className="h-5 w-5 text-gray-400"/>
                                 </div>
-                                <input type="text" placeholder="Buscar documentos..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-100 text-gray-800 placeholder-gray-500"/>
+                                <input type="text" placeholder="Buscar documentos disponíveis..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-50 focus:bg-white text-gray-800 placeholder-gray-500 focus:ring-1 focus:ring-[#005c9e] outline-none transition-colors"/>
                              </div>
                         </div>
                         <div className="lg:col-span-3"><MultiSelect label="Grupo Credor" options={grupoCredorOptions} /></div>
@@ -135,7 +345,7 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                         <div className="lg:col-span-4"><DateInput label="até" /></div>
                         <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
                         
-                        <div className="col-span-full flex justify-end items-end space-x-2">
+                        <div className="col-span-full flex justify-end items-end space-x-2 border-t pt-4">
                             <ActionButton icon={<SearchIcon className="h-5 w-5" />} color="blue" />
                             <ActionButton icon={<ResetIcon className="h-5 w-5" />} color="gray" />
                             <ActionButton icon={<DownloadIcon className="h-5 w-5" />} color="green" />
@@ -147,20 +357,16 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                     <div className="border-t pt-4">
                         <div className="flex justify-between items-center mb-4 text-sm">
                             <div className="flex items-center">
-                                <input type="checkbox" id="select-all" className="h-4 w-4 text-blue-600 border-gray-300 rounded"/>
-                                <label htmlFor="select-all" className="ml-2 font-medium text-gray-700">Selecionar todos</label>
+                                <input 
+                                    type="checkbox" 
+                                    id="select-all" 
+                                    checked={selectedDossierIds.length === availableDocs.length && availableDocs.length > 0}
+                                    onChange={handleToggleSelectAll}
+                                    className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
+                                />
+                                <label htmlFor="select-all" className="ml-2 font-medium text-gray-700 select-none cursor-pointer">Selecionar todos</label>
                             </div>
                             <div className="flex items-center space-x-1">
-                                {/* 
-                                   View toggles hidden as requested
-                                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md ${viewMode === 'table' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`} title="Visualização em Tabela">
-                                    <ListIcon className="h-5 w-5" />
-                                </button>
-                                <button onClick={() => setViewMode('card')} className={`p-2 rounded-md ${viewMode === 'card' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`} title="Visualização em Cards">
-                                    <LayoutGridIcon className="h-5 w-5" />
-                                </button>
-                                <div className="w-px h-6 bg-gray-200 mx-2"></div>
-                                */}
                                 <div className="flex items-center space-x-2 text-gray-700">
                                     <span>Mostrar:</span>
                                     <SelectInput options={['Todos', '10', '25', '50']} defaultValue="Todos" />
@@ -170,7 +376,13 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                         </div>
 
                         {viewMode === 'table' ? (
-                            <DocumentTable documents={sortedDocs} sortConfig={sortConfig} onSort={handleSort} />
+                            <DocumentTable 
+                                documents={sortedDocs} 
+                                sortConfig={sortConfig} 
+                                onSort={handleSort} 
+                                selectedIds={selectedDossierIds}
+                                onToggleOne={handleToggleSelectOne}
+                            />
                         ) : (
                             <div className="space-y-3">
                                 {sortedDocs.map(doc => <DocumentItem key={doc.id} doc={doc} />)}
@@ -178,21 +390,80 @@ const DocumentAssignment: React.FC<DocumentAssignmentProps> = ({ user, onBack })
                         )}
 
                          <div className="mt-4 flex justify-center items-center space-x-1">
-                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500"><ChevronLeftIcon className="h-5 w-5"/></button>
-                            <button className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white">1</button>
-                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100">2</button>
-                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100">3</button>
-                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100">4</button>
-                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500"><ChevronRightIcon className="h-5 w-5"/></button>
+                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50"><ChevronLeftIcon className="h-5 w-5"/></button>
+                            <button className="px-4 py-2 text-sm rounded-md bg-[#005c9e] text-white">1</button>
+                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors">2</button>
+                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors">3</button>
+                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50"><ChevronRightIcon className="h-5 w-5"/></button>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <footer className="flex justify-end items-center p-4 border-t bg-white">
-                <button onClick={onBack} className="bg-gray-500 text-white px-6 py-2 rounded-md mr-4 hover:bg-gray-600">Cancelar</button>
-                <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">Atribuir</button>
+            <footer className="flex justify-end items-center p-4 border-t bg-white flex-shrink-0">
+                <button onClick={onBack} className="bg-gray-100 text-gray-700 border border-gray-300 px-6 py-2 rounded-md mr-4 hover:bg-gray-200 transition-colors">Cancelar</button>
+                <button 
+                    onClick={handleAssignClick}
+                    disabled={selectedDossierIds.length === 0}
+                    className={`px-6 py-2 rounded-md text-white font-medium shadow-sm transition-all transform active:scale-95 duration-100
+                        ${selectedDossierIds.length > 0 ? 'bg-[#005c9e] hover:bg-[#004a7c] cursor-pointer' : 'bg-gray-300 cursor-not-allowed'}`}
+                >
+                    Atribuir ({selectedDossierIds.length})
+                </button>
             </footer>
+
+            {/* Assignment Modal */}
+            {assignModalOpen && managedBolsoes && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={() => setAssignModalOpen(false)}>
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+                            <h3 className="text-lg font-semibold text-gray-800">Selecione o Bolsão de Destino</h3>
+                            <button onClick={() => setAssignModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <CloseIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-gray-600 mb-4 text-sm">
+                                Você selecionou <span className="font-bold">{selectedDossierIds.length}</span> documentos. Escolha para qual bolsão eles devem ser direcionados:
+                            </p>
+                            <div className="space-y-3">
+                                {managedBolsoes.map(bolsao => (
+                                    <div 
+                                        key={bolsao.id} 
+                                        onClick={() => setTargetBolsaoId(bolsao.id)}
+                                        className={`p-3 rounded-md border-2 cursor-pointer flex items-center transition-all ${
+                                            targetBolsaoId === bolsao.id 
+                                            ? 'border-[#005c9e] bg-blue-50' 
+                                            : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center mr-3 ${targetBolsaoId === bolsao.id ? 'border-[#005c9e]' : 'border-gray-400'}`}>
+                                            {targetBolsaoId === bolsao.id && <div className="h-2 w-2 rounded-full bg-[#005c9e]"></div>}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-800">{bolsao.name}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-4 border-t flex justify-end space-x-3">
+                            <button 
+                                onClick={() => setAssignModalOpen(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={() => performAssign(targetBolsaoId!)}
+                                className="px-4 py-2 bg-[#005c9e] text-white rounded-md hover:bg-[#004a7c] transition-colors font-medium shadow-sm"
+                            >
+                                Confirmar Atribuição
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -215,22 +486,28 @@ const tableHeaders: { key: SortKey; label: string; className?: string }[] = [
     { key: 'cef', label: '%CEF' }
 ];
 
-const DocumentTable: React.FC<{ documents: Document[]; sortConfig: { key: SortKey | null; direction: SortDirection }; onSort: (key: SortKey) => void; }> = ({ documents, sortConfig, onSort }) => {
+const DocumentTable: React.FC<{ 
+    documents: Document[]; 
+    sortConfig: { key: SortKey | null; direction: SortDirection }; 
+    onSort: (key: SortKey) => void;
+    selectedIds: string[];
+    onToggleOne: (id: string) => void;
+}> = ({ documents, sortConfig, onSort, selectedIds, onToggleOne }) => {
     const getSortIcon = (key: SortKey) => {
         if (sortConfig.key !== key) return <ChevronDownIcon className="h-3 w-3 text-gray-300" />;
         if (sortConfig.direction === 'asc') return <ChevronUpIcon className="h-3 w-3" />;
         return <ChevronDownIcon className="h-3 w-3" />;
     };
     return (
-        <div className="overflow-x-auto border border-gray-200 rounded-md">
+        <div className="overflow-x-auto border border-gray-200 rounded-md bg-white">
             <table className="min-w-full divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                        <th scope="col" className="px-4 py-3 text-left">
-                           <input type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 rounded"/>
+                        <th scope="col" className="px-4 py-3 text-left w-10">
+                           {/* Checkbox column */}
                         </th>
                         {tableHeaders.map(({ key, label, className }) => (
-                            <th key={key} scope="col" onClick={() => onSort(key)} className={`px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 ${className ?? ''}`}>
+                            <th key={key} scope="col" onClick={() => onSort(key)} className={`px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors ${className ?? ''}`}>
                                 <div className="flex items-center space-x-1">
                                     <span>{label}</span>
                                     {getSortIcon(key)}
@@ -241,16 +518,30 @@ const DocumentTable: React.FC<{ documents: Document[]; sortConfig: { key: SortKe
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {documents.map(doc => (
-                        <tr key={doc.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3"><input type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 rounded"/></td>
+                        <tr key={doc.id} className={`hover:bg-blue-50 transition-colors ${selectedIds.includes(doc.id) ? 'bg-blue-50' : ''}`} onClick={() => onToggleOne(doc.id)}>
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={selectedIds.includes(doc.id)}
+                                    onChange={() => onToggleOne(doc.id)}
+                                    className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
+                                />
+                            </td>
                             {tableHeaders.map(({key}) => {
                                 if (key === 'filaOrigem') {
                                     return <td key={`${doc.id}-${key}`} className="px-4 py-3 whitespace-nowrap text-gray-700">{doc.gestor && doc.bolsao ? `${doc.gestor} > ${doc.bolsao}` : ''}</td>;
                                 }
-                                return <td key={`${doc.id}-${key}`} className="px-4 py-3 whitespace-nowrap text-gray-700">{doc[key as keyof Document]}</td>
+                                return <td key={`${doc.id}-${key}`} className="px-4 py-3 whitespace-nowrap text-gray-700 cursor-pointer">{doc[key as keyof Document]}</td>
                             })}
                         </tr>
                     ))}
+                    {documents.length === 0 && (
+                        <tr>
+                            <td colSpan={tableHeaders.length + 1} className="px-4 py-8 text-center text-gray-500 italic">
+                                Nenhum documento disponível com os filtros atuais.
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>
@@ -260,7 +551,7 @@ const DocumentTable: React.FC<{ documents: Document[]; sortConfig: { key: SortKe
 const TextInput: React.FC<{ label?: string }> = ({ label }) => (
     <div>
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
-        <input type="text" className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-800" />
+        <input type="text" className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-gray-800 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none" />
     </div>
 );
 
@@ -268,7 +559,7 @@ const SelectInput: React.FC<{ label?: string, options?: string[], defaultValue?:
      <div>
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
         <div className="relative">
-            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-100 text-gray-800">
+            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-50 text-gray-800 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none">
                 {options.map(opt => <option key={opt}>{opt}</option>)}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -282,7 +573,7 @@ const DateInput: React.FC<{label?: string}> = ({label}) => (
      <div className="w-full">
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
         <div className="relative">
-             <input type="text" placeholder="dd/mm/aaaa" className="w-full p-2 border border-gray-300 rounded-md pr-10 bg-gray-100 text-gray-800 placeholder-gray-500" />
+             <input type="text" placeholder="dd/mm/aaaa" className="w-full p-2 border border-gray-300 rounded-md pr-10 bg-gray-50 text-gray-800 placeholder-gray-500 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none" />
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                 <CalendarIcon className="h-5 w-5"/>
             </div>
@@ -292,21 +583,21 @@ const DateInput: React.FC<{label?: string}> = ({label}) => (
 
 const ActionButton: React.FC<{ icon: React.ReactNode, color: 'blue' | 'gray' | 'green' }> = ({ icon, color }) => {
     const colorClasses = {
-        blue: 'bg-blue-600 hover:bg-blue-700 text-white',
-        gray: 'bg-gray-200 hover:bg-gray-300 text-gray-700',
-        green: 'bg-green-500 hover:bg-green-600 text-white',
+        blue: 'bg-[#005c9e] hover:bg-[#004a7c] text-white active:bg-[#00385e]',
+        gray: 'bg-gray-200 hover:bg-gray-300 text-gray-700 active:bg-gray-400',
+        green: 'bg-green-600 hover:bg-green-700 text-white active:bg-green-800',
     };
     return (
-        <button className={`p-2 rounded-md ${colorClasses[color]}`}>{icon}</button>
+        <button className={`p-2 rounded-md transition-all active:scale-95 duration-100 ${colorClasses[color]}`}>{icon}</button>
     )
 };
 
 const DocumentItem: React.FC<{doc: Document}> = ({ doc }) => {
     return (
-        <div className="border rounded-md p-3 flex items-start space-x-3 text-xs text-gray-600">
-            <input type="checkbox" className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded"/>
+        <div className="border rounded-md p-3 flex items-start space-x-3 text-xs text-gray-600 bg-white shadow-sm hover:shadow-md transition-shadow">
+            <input type="checkbox" className="mt-1 h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e]"/>
             <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1">
-                <p><span className="font-semibold text-blue-600">Id: {doc.id}</span></p>
+                <p><span className="font-semibold text-[#005c9e]">Id: {doc.id}</span></p>
                 <p><span className="font-semibold text-gray-800">Nr. Doc.:</span> {doc.nrDoc}</p>
                 {doc.gestor && doc.bolsao && (
                     <p className="col-span-full"><span className="font-semibold text-gray-800">Fila de Origem:</span> {doc.gestor} &gt; {doc.bolsao}</p>

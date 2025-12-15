@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Manager, User, Document, Bolsao } from '../types';
-import { CloseIcon, SearchIcon, ChevronDownIcon, CalendarIcon, ResetIcon, PlusIcon, TrashIcon, UsersIcon, FileTextIcon } from './Icons';
+import { CloseIcon, SearchIcon, ChevronDownIcon, ChevronUpIcon, CalendarIcon, ResetIcon, PlusIcon, TrashIcon, UsersIcon, FileTextIcon, AssignIcon } from './Icons';
 import DeleteBolsaoModal from './DeleteBolsaoModal';
 import RemoveUserModal from './RemoveUserModal';
 
@@ -12,6 +12,23 @@ const availableDocsData: Document[] = [
     { id: '543', nrDoc: '71657_9001319854844_22001_0008020420670_1.pdf', cat: 'Simplificada', stat: '1ª Análise', dtAssin: '01/09/1988 00:00:00', mut: 'ROSANGELA FERREIRA DE LIMA', tipoEvt: 'L10', or: '32', planReaj: 'EQ1 1 P 06 CTP', im: '07', fh2: 'Não', fh3: 'Não', cess: 'Não', cef: '0910', codigoFh2: 'Código FH2' },
     { id: '546', nrDoc: '32138_10104932667_85053_9948000312011_1.pdf', cat: 'Simplificada', stat: 'Pedido Reanálise', dtAssin: '20/06/1983 00:00:00', mut: 'AROLDO GUEDES DA CUNHA', tipoEvt: 'L13', or: '32', planReaj: 'PES 1 A 04 UPC', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '1000', codigoFh2: 'Código FH2' },
     { id: '547', nrDoc: '41801_9001108341627_43521_7001078400003_1.pdf', cat: 'Simplificada', stat: 'Pedido Reanálise', dtAssin: '31/03/1981 00:00:00', mut: 'HUMBERTO CARDOZO DE SOUZA', tipoEvt: 'TPZ', or: '11', planReaj: 'PES 1 A 01 UPC', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '0000', codigoFh2: 'Código FH2' },
+];
+
+const tableHeaders = [
+    { key: 'id', label: 'Id' }, 
+    { key: 'nrDoc', label: 'Nr. Doc.', className: 'min-w-[250px]' }, 
+    { key: 'cat', label: 'Cat.' }, 
+    { key: 'stat', label: 'Status' }, 
+    { key: 'dtAssin', label: 'Dt. Assinatura', className: 'min-w-[140px]' }, 
+    { key: 'mut', label: 'Mutuário', className: 'min-w-[200px]' }, 
+    { key: 'tipoEvt', label: 'Tipo Evt.' }, 
+    { key: 'or', label: 'OR' }, 
+    { key: 'planReaj', label: 'Plano Reaj.', className: 'min-w-[120px]' }, 
+    { key: 'im', label: 'IM' }, 
+    { key: 'fh2', label: 'FH2' }, 
+    { key: 'fh3', label: 'FH3' }, 
+    { key: 'cess', label: 'Cess.' }, 
+    { key: 'cef', label: '%CEF' }
 ];
 
 interface QueueManagementProps {
@@ -42,6 +59,12 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
 
     // State for Dossie distribution tab
     const [searchedDossies, setSearchedDossies] = useState<Document[]>([]);
+    const [assignedDossies, setAssignedDossies] = useState<Document[]>([]);
+    const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({ key: 'id', direction: 'asc' });
+    const [selectedDossierIds, setSelectedDossierIds] = useState<string[]>([]);
+
+    // Notification state
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
     // State for delete confirmation modal
     const [bolsaoToDelete, setBolsaoToDelete] = useState<Bolsao | null>(null);
@@ -71,7 +94,16 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
     useEffect(() => {
         setSelectedAnalystIds([]);
         setSearchedDossies([]); // Clear search results when changing bolsao
+        setAssignedDossies([]); // Clear assigned list when changing bolsao (or fetch from API in real app)
+        setSelectedDossierIds([]);
     }, [selectedBolsaoId]);
+
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
 
     const handleRenameBolsao = () => {
         if (editingBolsaoId === null || !editingBolsaoName.trim()) {
@@ -159,7 +191,101 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
     const handleSaveRules = () => {
         // In a real app, this would save filters and then fetch matching documents.
         // Here, we just load mock data to display the result.
-        setSearchedDossies(availableDocsData);
+        // We exclude documents that are already assigned
+        const newDocs = availableDocsData.filter(d => !assignedDossies.some(ad => ad.id === d.id));
+        setSearchedDossies(newDocs);
+        setSelectedDossierIds([]); // Reset selection when fetching new rules
+    };
+
+    const handleToggleSelectAll = () => {
+        if (selectedDossierIds.length === searchedDossies.length) {
+            setSelectedDossierIds([]);
+        } else {
+            setSelectedDossierIds(searchedDossies.map(d => d.id));
+        }
+    };
+
+    const handleToggleSelectOne = (id: string) => {
+        if (selectedDossierIds.includes(id)) {
+            setSelectedDossierIds(prev => prev.filter(item => item !== id));
+        } else {
+            setSelectedDossierIds(prev => [...prev, id]);
+        }
+    };
+
+    const handleAssignSelectedDossiers = () => {
+        if (selectedDossierIds.length === 0) return;
+        
+        // Find selected docs
+        const docsToAssign = searchedDossies.filter(d => selectedDossierIds.includes(d.id));
+        
+        // Update assigned list
+        setAssignedDossies(prev => [...prev, ...docsToAssign]);
+
+        // Remove from searched list (simulate they moved buckets)
+        setSearchedDossies(prev => prev.filter(d => !selectedDossierIds.includes(d.id)));
+
+        // Simulate API call and success action
+        const count = selectedDossierIds.length;
+        setNotification({
+            message: `${count} dossiê(s) atribuído(s) com sucesso ao ${selectedBolsao?.name || 'bolsão'}.`,
+            type: 'success'
+        });
+        
+        // Clear selection to reflect action taken
+        setSelectedDossierIds([]);
+    };
+
+    const handleUnassignDossier = (id: string) => {
+        // Remove from assigned list
+        const docToRemove = assignedDossies.find(d => d.id === id);
+        setAssignedDossies(prev => prev.filter(d => d.id !== id));
+        
+        // Optionally add back to searched list if it matches filters? 
+        // For simplicity, we just remove from assigned. If the user hits "Salvar Regras" again, it would appear.
+        // Or we can manually push it back if we want to be fancy, but let's keep it simple.
+        if (docToRemove) {
+             setSearchedDossies(prev => [...prev, docToRemove]);
+        }
+    };
+
+    const handleUnassignAll = () => {
+         // Move all back to search results if possible, or just clear
+         const allAssigned = [...assignedDossies];
+         setAssignedDossies([]);
+         setSearchedDossies(prev => [...prev, ...allAssigned]);
+    };
+
+    // Sorting Logic
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedSearchedDossies = useMemo(() => {
+        let sortableItems = [...searchedDossies];
+        if (sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                // @ts-ignore
+                const aValue = a[sortConfig.key];
+                // @ts-ignore
+                const bValue = b[sortConfig.key];
+                
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [searchedDossies, sortConfig]);
+
+    const getSortIcon = (key: string) => {
+        if (sortConfig.key !== key) return <ChevronDownIcon className="h-3 w-3 text-gray-300" />;
+        if (sortConfig.direction === 'asc') return <ChevronUpIcon className="h-3 w-3" />;
+        return <ChevronDownIcon className="h-3 w-3" />;
     };
 
     // Drag and Drop Handlers
@@ -191,13 +317,21 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-xl w-full h-[85vh] flex flex-col overflow-hidden">
+        <div className="bg-white rounded-lg shadow-xl w-full h-[85vh] flex flex-col overflow-hidden relative">
+            {notification && (
+                <div className={`absolute top-4 right-4 z-50 p-3 rounded-md shadow-lg text-white font-medium transition-all duration-500 ease-in-out transform translate-y-0 ${notification.type === 'success' ? 'bg-green-600' : 'bg-blue-600'}`}>
+                    <div className="flex items-center space-x-2">
+                         {notification.type === 'success' && <div className="h-2 w-2 bg-white rounded-full"></div>}
+                         <span>{notification.message}</span>
+                    </div>
+                </div>
+            )}
             <header className="flex justify-between items-center p-4 border-b bg-gray-50 flex-shrink-0">
                 <div className="flex flex-col">
                     <h2 className="text-xl font-semibold text-gray-800">Gestão de Filas e Bolsões</h2>
                     <span className="text-sm text-gray-500">Gestor: {manager.name}</span>
                 </div>
-                <button onClick={onBack} className="text-gray-500 hover:text-gray-800">
+                <button onClick={onBack} className="text-gray-500 hover:text-gray-800 transition-colors">
                     <CloseIcon className="h-6 w-6" />
                 </button>
             </header>
@@ -208,7 +342,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                         <span className="font-semibold text-gray-700">Meus Bolsões</span>
                         <button 
                             onClick={handleCreateBolsao}
-                            className="bg-[#005c9e] text-white p-1.5 rounded-md hover:bg-[#004a7c]"
+                            className="bg-[#005c9e] text-white p-1.5 rounded-md hover:bg-[#004a7c] active:scale-95 transition-transform"
                             title="Criar novo bolsão"
                         >
                             <PlusIcon className="h-4 w-4" />
@@ -276,7 +410,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                     </div>
                                     <button 
                                         onClick={() => setBolsaoToDelete(selectedBolsao)}
-                                        className="text-red-500 hover:text-red-700 text-sm flex items-center space-x-1 px-3 py-2 rounded-md hover:bg-red-50"
+                                        className="text-red-500 hover:text-red-700 text-sm flex items-center space-x-1 px-3 py-2 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors"
                                     >
                                         <TrashIcon className="h-4 w-4" />
                                         <span>Excluir Bolsão</span>
@@ -311,7 +445,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                                     <button
                                                         type="button"
                                                         onClick={() => setAnalystSelectorOpen(!analystSelectorOpen)}
-                                                        className="w-full p-2.5 border border-gray-300 rounded-md bg-white flex justify-between items-center text-left focus:ring-2 focus:ring-[#005c9e] focus:border-transparent outline-none"
+                                                        className="w-full p-2.5 border border-gray-300 rounded-md bg-white flex justify-between items-center text-left focus:ring-2 focus:ring-[#005c9e] focus:border-transparent outline-none transition-shadow"
                                                     >
                                                         <span className={selectedAnalystIds.length > 0 ? "text-gray-800" : "text-gray-500"}>
                                                             {selectedAnalystIds.length > 0 ? `${selectedAnalystIds.length} analista(s) selecionado(s)` : 'Selecione um ou mais analistas...'}
@@ -353,7 +487,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                                 <button
                                                     onClick={handleAddSelectedUsers}
                                                     disabled={selectedAnalystIds.length === 0}
-                                                    className="px-4 py-2.5 bg-[#005c9e] text-white rounded-md hover:bg-[#004a7c] disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0 transition-colors"
+                                                    className="px-4 py-2.5 bg-[#005c9e] text-white rounded-md hover:bg-[#004a7c] active:scale-95 disabled:bg-gray-300 disabled:cursor-not-allowed flex-shrink-0 transition-all"
                                                 >
                                                     Adicionar
                                                 </button>
@@ -375,14 +509,14 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                                             const user = manager.users.find(u => u.matricula === userId);
                                                             if (!user) return null;
                                                             return (
-                                                                <tr key={userId} className="hover:bg-gray-50">
+                                                                <tr key={userId} className="hover:bg-gray-50 transition-colors">
                                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.nomeCompleto}</td>
                                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.matricula}</td>
                                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                                         <button 
                                                                             onClick={() => handleRemoveUserClick(user)}
-                                                                            className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1.5 rounded-md transition-colors"
+                                                                            className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 active:scale-95 p-1.5 rounded-md transition-all"
                                                                             title="Remover do bolsão"
                                                                         >
                                                                             <TrashIcon className="h-4 w-4" />
@@ -405,56 +539,155 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
                                 )}
 
                                 {activeTab === 'filters' && (
-                                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                                        <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase border-b pb-2">Critérios de Elegibilidade (Filtros)</h3>
-                                        <p className="text-sm text-gray-600 mb-6">
-                                            Os documentos que corresponderem aos filtros abaixo serão automaticamente direcionados para a fila deste bolsão.
-                                        </p>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mb-4">
-                                            <div className="lg:col-span-3"><SelectInput label="Grupo Credor" /></div>
-                                            <div className="lg:col-span-3"><SelectInput label="Agente Financeiro" /></div>
-                                            <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
-                                            <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
-                                            <div className="lg:col-span-2"><SelectInput label="Categoria" /></div>
-                                            <div className="lg:col-span-2"><SelectInput label="Status" /></div>
-                                            <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
-                                            <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
-                                            <div className="lg:col-span-2"><TextInput label="OR" /></div>
-                                            <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
-                                            <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
-                                            <div className="lg:col-span-3"><TextInput label="IM" /></div>
-                                            <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
-                                            <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
-                                            <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
-                                            <div className="lg:col-span-4"><DateInput label="até" /></div>
-                                            <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
-                                            <div className="col-span-full flex justify-end items-end space-x-2 pt-4 border-t mt-2">
-                                                <button className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                                    <ResetIcon className="h-4 w-4 mr-2" />
-                                                    Limpar Filtros
-                                                </button>
-                                                <button 
-                                                    onClick={handleSaveRules}
-                                                    className="flex items-center px-6 py-2 text-white bg-[#005c9e] hover:bg-[#004a7c] rounded-md shadow-sm transition-colors"
-                                                >
-                                                    Salvar Regras
-                                                </button>
+                                    <div className="space-y-6">
+                                        {/* Documentos Atribuídos Section */}
+                                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="text-sm font-semibold text-gray-700 uppercase">Documentos Atribuídos ({assignedDossies.length})</h3>
+                                                {assignedDossies.length > 0 && (
+                                                    <button 
+                                                        onClick={handleUnassignAll}
+                                                        className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-md flex items-center space-x-2 hover:bg-red-700 active:scale-95 transition-all"
+                                                    >
+                                                        <TrashIcon className="h-3 w-3" />
+                                                        <span>Desatribuir todos</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center border rounded-md mb-4 bg-gray-50">
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="Buscar documentos atribuídos..." 
+                                                    className="w-full p-2 pl-3 focus:outline-none bg-transparent text-sm text-gray-800 placeholder-gray-500"
+                                                />
+                                                 <button className="p-2 text-gray-500 hover:text-[#005c9e] transition-colors"><SearchIcon className="h-4 w-4" /></button>
+                                            </div>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {assignedDossies.length > 0 ? (
+                                                    assignedDossies.map(doc => (
+                                                        <div key={doc.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md text-sm text-gray-800 hover:bg-gray-200 transition-colors group">
+                                                            <div className="truncate pr-4">
+                                                                <span className="font-bold text-[#005c9e] mr-2">{doc.id}</span>
+                                                                <span className="text-gray-600">{doc.nrDoc}</span>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => handleUnassignDossier(doc.id)}
+                                                                className="text-gray-400 hover:text-red-600 transition-colors p-1 opacity-0 group-hover:opacity-100"
+                                                                title="Remover documento"
+                                                            >
+                                                                <CloseIcon className="h-4 w-4"/>
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center py-6 text-gray-500 text-sm italic bg-gray-50 rounded-md border border-dashed border-gray-300">
+                                                        Nenhum documento atribuído manualmente a este bolsão.
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
-                                        {searchedDossies.length > 0 && (
-                                            <div className="border-t pt-4 mt-6">
-                                                <h3 className="text-base font-medium text-gray-800 mb-3">Dossiês correspondentes a esta regra:</h3>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {searchedDossies.map(doc => (
-                                                        <div key={doc.id} className="bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full border border-blue-200">
-                                                            ID: {doc.id}
-                                                        </div>
-                                                    ))}
+                                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                                            <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase border-b pb-2">Critérios de Elegibilidade (Filtros)</h3>
+                                            <p className="text-sm text-gray-600 mb-6">
+                                                Os documentos que corresponderem aos filtros abaixo serão automaticamente direcionados para a fila deste bolsão.
+                                            </p>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mb-4">
+                                                <div className="lg:col-span-3"><SelectInput label="Grupo Credor" /></div>
+                                                <div className="lg:col-span-3"><SelectInput label="Agente Financeiro" /></div>
+                                                <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
+                                                <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
+                                                <div className="lg:col-span-2"><SelectInput label="Categoria" /></div>
+                                                <div className="lg:col-span-2"><SelectInput label="Status" /></div>
+                                                <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
+                                                <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
+                                                <div className="lg:col-span-2"><TextInput label="OR" /></div>
+                                                <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
+                                                <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
+                                                <div className="lg:col-span-3"><TextInput label="IM" /></div>
+                                                <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
+                                                <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
+                                                <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
+                                                <div className="lg:col-span-4"><DateInput label="até" /></div>
+                                                <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
+                                                <div className="col-span-full flex justify-end items-end space-x-2 pt-4 border-t mt-2">
+                                                    <button className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors active:scale-95">
+                                                        <ResetIcon className="h-4 w-4 mr-2" />
+                                                        Limpar Filtros
+                                                    </button>
+                                                    <button 
+                                                        onClick={handleSaveRules}
+                                                        className="flex items-center px-6 py-2 text-white bg-[#005c9e] hover:bg-[#004a7c] rounded-md shadow-sm transition-all active:scale-95"
+                                                    >
+                                                        Salvar Regras
+                                                    </button>
                                                 </div>
                                             </div>
-                                        )}
+
+                                            {searchedDossies.length > 0 && (
+                                                <div className="border-t pt-4 mt-6">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <h3 className="text-base font-medium text-gray-800">Dossiês correspondentes a esta regra ({searchedDossies.length})</h3>
+                                                    </div>
+                                                    <div className="overflow-x-auto border border-gray-200 rounded-md bg-white shadow-sm">
+                                                        <table className="min-w-full divide-y divide-gray-200 text-xs">
+                                                            <thead className="bg-gray-50">
+                                                                <tr>
+                                                                    <th className="px-4 py-3 text-left">
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={searchedDossies.length > 0 && selectedDossierIds.length === searchedDossies.length}
+                                                                            onChange={handleToggleSelectAll}
+                                                                            className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
+                                                                        />
+                                                                    </th>
+                                                                    {tableHeaders.map((col) => (
+                                                                        <th key={col.key} onClick={() => handleSort(col.key)} className={`px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors ${col.className || ''}`}>
+                                                                            <div className="flex items-center space-x-1">
+                                                                                <span>{col.label}</span>
+                                                                                {getSortIcon(col.key)}
+                                                                            </div>
+                                                                        </th>
+                                                                    ))}
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                                {sortedSearchedDossies.map((doc) => (
+                                                                    <tr key={doc.id} className={`hover:bg-blue-50 transition-colors ${selectedDossierIds.includes(doc.id) ? 'bg-blue-50' : ''}`} onClick={() => handleToggleSelectOne(doc.id)}>
+                                                                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                checked={selectedDossierIds.includes(doc.id)}
+                                                                                onChange={() => handleToggleSelectOne(doc.id)}
+                                                                                className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
+                                                                            />
+                                                                        </td>
+                                                                        {tableHeaders.map((col) => (
+                                                                            <td key={`${doc.id}-${col.key}`} className="px-4 py-3 whitespace-nowrap text-gray-700 cursor-pointer">
+                                                                                {/* @ts-ignore */}
+                                                                                {doc[col.key]}
+                                                                            </td>
+                                                                        ))}
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div className="mt-4 flex justify-end">
+                                                        <button 
+                                                            onClick={handleAssignSelectedDossiers}
+                                                            disabled={selectedDossierIds.length === 0}
+                                                            className={`px-6 py-2 rounded-md text-white font-medium transition-all shadow-sm flex items-center space-x-2 transform active:scale-95
+                                                                ${selectedDossierIds.length > 0 ? 'bg-[#005c9e] hover:bg-[#004a7c] cursor-pointer' : 'bg-gray-300 cursor-not-allowed'}`}
+                                                        >
+                                                            <AssignIcon className="h-4 w-4" />
+                                                            <span>Atribuir Dossiês Selecionados ({selectedDossierIds.length})</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -486,7 +719,7 @@ const QueueManagement: React.FC<QueueManagementProps> = ({ manager, onBack }) =>
 const TextInput: React.FC<{ label?: string }> = ({ label }) => (
     <div>
         {label && <label className="block text-gray-500 mb-1 text-xs font-medium">{label}</label>}
-        <input type="text" className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors" />
+        <input type="text" className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none" />
     </div>
 );
 
@@ -494,7 +727,7 @@ const SelectInput: React.FC<{ label?: string, options?: string[], defaultValue?:
      <div>
         {label && <label className="block text-gray-500 mb-1 text-xs font-medium">{label}</label>}
         <div className="relative">
-            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors">
+            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none">
                 {options.map(opt => <option key={opt}>{opt}</option>)}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -508,7 +741,7 @@ const DateInput: React.FC<{label?: string}> = ({label}) => (
      <div className="w-full">
         {label && <label className="block text-gray-500 mb-1 text-xs font-medium">{label}</label>}
         <div className="relative">
-             <input type="text" placeholder="dd/mm/aaaa" className="w-full p-2 border border-gray-300 rounded-md pr-10 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors" />
+             <input type="text" placeholder="dd/mm/aaaa" className="w-full p-2 border border-gray-300 rounded-md pr-10 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none" />
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                 <CalendarIcon className="h-5 w-5"/>
             </div>
