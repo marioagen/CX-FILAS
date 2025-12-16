@@ -1,9 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
-import { Manager, User, AssignedDoc, Bolsao } from '../types';
-import { SearchIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, AssignIcon, CloseIcon, SlidersIcon, FileTextIcon } from './Icons';
+import { Manager, User, AssignedDoc, Bolsao, Document } from '../types';
+import { SearchIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, AssignIcon, CloseIcon, SlidersIcon, FileTextIcon, ListIcon, LayoutGridIcon, ResetIcon, DownloadIcon, UploadIcon } from './Icons';
 import DocumentAssignment from './DocumentAssignment';
 import QueueManagement from './QueueManagement';
+import { DocumentTable, DocumentItem, TextInput, SelectInput, DateInput, ActionButton } from './SharedDocumentComponents';
+import MultiSelect from './MultiSelect';
 
 const managersData: Manager[] = [
   {
@@ -56,7 +57,14 @@ const managersData: Manager[] = [
   },
 ];
 
-// Mock data to simulate the number of documents waiting in the queue for each Bolsão
+const allDocumentsMock: Document[] = [
+    { id: '472', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Simplificada', stat: 'Em Análise', dtAssin: '18/06/1986', mut: 'DORIA VANIA NUNES', tipoEvt: 'L13', or: '32', planReaj: 'EQ1 1 P 01 CTP', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Cód FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Prioritário' },
+    { id: '474', nrDoc: '9001318223195_85058_9923810062231_1.pdf', cat: 'Completa', stat: 'Em Análise', dtAssin: '13/09/1984', mut: 'MARICELIA MORAIS', tipoEvt: 'L13', or: '32', planReaj: 'PES A 4 A 07 SMH', im: '08', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1000', codigoFh2: 'Cód FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Análise Simples' },
+    { id: '543', nrDoc: '71657_9001319854844_22001_0008020420670_1.pdf', cat: 'Simplificada', stat: '1ª Análise', dtAssin: '01/09/1988', mut: 'ROSANGELA FERREIRA', tipoEvt: 'L10', or: '32', planReaj: 'EQ1 1 P 06 CTP', im: '07', fh2: 'Não', fh3: 'Não', cess: 'Não', cef: '0910', codigoFh2: 'Cód FH2', gestor: 'Celeste Mayumi', bolsao: 'Bolsão Minas Gerais' },
+    { id: '546', nrDoc: '32138_10104932667_85053_9948000312011_1.pdf', cat: 'Simplificada', stat: 'Pedido Reanálise', dtAssin: '20/06/1983', mut: 'AROLDO GUEDES', tipoEvt: 'L13', or: '32', planReaj: 'PES 1 A 04 UPC', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '1000', codigoFh2: 'Cód FH2', gestor: 'Tarsila Correa', bolsao: 'Bolsão RJ Capital' },
+    { id: '999', nrDoc: '11111_000000000000_1.pdf', cat: 'Completa', stat: 'Pendente', dtAssin: '10/01/2023', mut: 'JOAO DA SILVA', tipoEvt: 'L99', or: '01', planReaj: 'N/A', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Não', cef: '0000', codigoFh2: 'Cód FH2', gestor: '', bolsao: '' },
+];
+
 const bolsaoQueueStats: Record<string, number> = {
     'Bolsão Prioritário': 142,
     'Bolsão Análise Simples': 58,
@@ -64,12 +72,25 @@ const bolsaoQueueStats: Record<string, number> = {
     'Bolsão Minas Gerais': 89
 };
 
+type ViewMode = 'manager' | 'general';
+type SortKey = keyof Document | 'filaOrigem';
+type UserSortKey = 'bolsao' | 'docsAtribuidos';
+type SortDirection = 'asc' | 'desc';
+
 const UserManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Análise');
   const [openManagerId, setOpenManagerId] = useState<number | null>(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [managingQueueFor, setManagingQueueFor] = useState<Manager | null>(null);
   const [managedBolsoes, setManagedBolsoes] = useState<Bolsao[] | undefined>(undefined);
+  
+  // New State for View Mode
+  const [viewMode, setViewMode] = useState<ViewMode>('manager');
+  
+  // General Queue State
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: 'id', direction: 'asc' });
+  const [selectedDossierIds, setSelectedDossierIds] = useState<string[]>([]);
+  const [docsViewMode, setDocsViewMode] = useState<'table' | 'card'>('table');
 
   const toggleManager = (id: number) => {
     setOpenManagerId(openManagerId === id ? null : id);
@@ -93,6 +114,56 @@ const UserManagement: React.FC = () => {
     setManagingQueueFor(null);
   };
 
+  // General Queue Handlers
+  const handleSort = (key: SortKey) => {
+      let direction: SortDirection = 'asc';
+      if (sortConfig.key === key && sortConfig.direction === 'asc') {
+          direction = 'desc';
+      }
+      setSortConfig({ key, direction });
+  };
+
+  const sortedDocs = useMemo(() => {
+      let sortableItems = [...allDocumentsMock];
+      if (sortConfig.key) {
+          sortableItems.sort((a, b) => {
+              let aValue: string | number | undefined;
+              let bValue: string | number | undefined;
+
+              if (sortConfig.key === 'filaOrigem') {
+                  aValue = a.gestor && a.bolsao ? `${a.gestor} > ${a.bolsao}` : '';
+                  bValue = b.gestor && b.bolsao ? `${b.gestor} > ${b.bolsao}` : '';
+              } else {
+                  const key = sortConfig.key as keyof Document;
+                  aValue = a[key];
+                  bValue = b[key];
+              }
+
+              if (aValue === undefined || bValue === undefined) return 0;
+              if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+              if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+              return 0;
+          });
+      }
+      return sortableItems;
+  }, [sortConfig]);
+
+  const handleToggleSelectAll = () => {
+    if (selectedDossierIds.length === allDocumentsMock.length && allDocumentsMock.length > 0) {
+        setSelectedDossierIds([]);
+    } else {
+        setSelectedDossierIds(allDocumentsMock.map(d => d.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    if (selectedDossierIds.includes(id)) {
+        setSelectedDossierIds(prev => prev.filter(item => item !== id));
+    } else {
+        setSelectedDossierIds(prev => [...prev, id]);
+    }
+  };
+
   if (managingQueueFor) {
     return <QueueManagement manager={managingQueueFor} onBack={handleBackFromQueue} />;
   }
@@ -100,6 +171,10 @@ const UserManagement: React.FC = () => {
   if (selectedUser) {
     return <DocumentAssignment user={selectedUser} onBack={handleBack} managedBolsoes={managedBolsoes} />;
   }
+
+  const grupoCredorOptions = [ 'Bancos Privados', 'COHAB', 'CAIXA', 'Entes Públicos', 'Liquidandas', 'Outros' ];
+  const agenteFinanceiroOptions = [ '22000 - BANCO UBS PACTUAL / PREVISUL', '22001 - BANCO ITAÚ / BANESTADO', '50013 - BANCO DE CRÉITO NACIONAL S/A - BCN S/A', '50048 - BANCO SANTANDER BRASIL S/A', '50137 - BANCO REAL S/A' ];
+  const categoriaOptions = [ 'AJ - Cumprimento', 'AJ - Subsídio', 'Pedidos GECVS', 'Ofício Vencido', 'Pedido AF', 'Reanálise (Inadequado AUDIR)' ];
 
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-6">
@@ -120,36 +195,145 @@ const UserManagement: React.FC = () => {
         </nav>
       </div>
 
-      <div className="mt-6 mb-4">
-        <div className="flex items-center max-w-sm rounded-md focus-within:ring-2 focus-within:ring-offset-1 focus-within:ring-[#005c9e]">
-          <div className="relative w-full">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-gray-500" />
+      {activeTab === 'Análise' && (
+        <div className="mt-6 mb-4">
+            <div className="flex bg-gray-100 p-1 rounded-lg w-full max-w-md mb-6 mx-auto sm:mx-0">
+                <button 
+                    onClick={() => setViewMode('manager')}
+                    className={`flex-1 py-1.5 px-4 text-sm font-medium rounded-md transition-all ${viewMode === 'manager' ? 'bg-white text-[#005c9e] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    Visão por Gestor
+                </button>
+                <button 
+                    onClick={() => setViewMode('general')}
+                    className={`flex-1 py-1.5 px-4 text-sm font-medium rounded-md transition-all ${viewMode === 'general' ? 'bg-white text-[#005c9e] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    Fila Geral
+                </button>
             </div>
-            <input
-              type="text"
-              placeholder="Pesquisar"
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-l-md focus:outline-none bg-gray-100 placeholder-gray-500"
-            />
-          </div>
-          <button className="bg-[#005c9e] text-white p-[9px] rounded-r-md hover:bg-[#004a7c] border border-[#005c9e]">
-            <SearchIcon className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
 
-      <div className="space-y-2">
-        {managersData.map((manager) => (
-          <AccordionItem
-            key={manager.id}
-            manager={manager}
-            isOpen={openManagerId === manager.id}
-            onToggle={() => toggleManager(manager.id)}
-            onAssignClick={handleAssignClick}
-            onManageQueueClick={handleManageQueueClick}
-          />
-        ))}
-      </div>
+            {viewMode === 'manager' ? (
+                <>
+                    <div className="flex items-center max-w-sm rounded-md focus-within:ring-2 focus-within:ring-offset-1 focus-within:ring-[#005c9e] mb-4">
+                        <div className="relative w-full">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <SearchIcon className="h-5 w-5 text-gray-500" />
+                            </div>
+                            <input
+                            type="text"
+                            placeholder="Pesquisar gestor ou analista"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-l-md focus:outline-none bg-gray-100 placeholder-gray-500"
+                            />
+                        </div>
+                        <button className="bg-[#005c9e] text-white p-[9px] rounded-r-md hover:bg-[#004a7c] border border-[#005c9e]">
+                            <SearchIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-2">
+                        {managersData.map((manager) => (
+                        <AccordionItem
+                            key={manager.id}
+                            manager={manager}
+                            isOpen={openManagerId === manager.id}
+                            onToggle={() => toggleManager(manager.id)}
+                            onAssignClick={handleAssignClick}
+                            onManageQueueClick={handleManageQueueClick}
+                        />
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <div className="bg-white rounded-md border border-gray-200 p-4 shadow-sm animate-fade-in">
+                    <h3 className="text-lg font-medium text-gray-700 mb-4">Fila Geral de Documentos</h3>
+                    
+                    {/* Reusing Filters Structure exactly as in DocumentAssignment */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mb-4">
+                        <div className="col-span-full">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <SearchIcon className="h-5 w-5 text-gray-400"/>
+                                </div>
+                                <input type="text" placeholder="Buscar documentos na fila geral..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-50 focus:bg-white text-gray-800 placeholder-gray-500 focus:ring-1 focus:ring-[#005c9e] outline-none transition-colors"/>
+                             </div>
+                        </div>
+                        <div className="lg:col-span-3"><MultiSelect label="Grupo Credor" options={grupoCredorOptions} /></div>
+                        <div className="lg:col-span-3"><MultiSelect label="Agente Financeiro" options={agenteFinanceiroOptions} /></div>
+                        <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
+                        <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
+                        
+                        <div className="lg:col-span-2"><MultiSelect label="Categoria" options={categoriaOptions} /></div>
+                        <div className="lg:col-span-2"><SelectInput label="Status" /></div>
+                        <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
+                        <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
+                        <div className="lg:col-span-2"><TextInput label="OR" /></div>
+                        <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
+
+                        <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
+                        <div className="lg:col-span-3"><TextInput label="IM" /></div>
+                        <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
+                        <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
+
+                        <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
+                        <div className="lg:col-span-4"><DateInput label="até" /></div>
+                        <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
+                        
+                        <div className="col-span-full flex justify-end items-end space-x-2 border-t pt-4">
+                            <ActionButton icon={<SearchIcon className="h-5 w-5" />} color="blue" />
+                            <ActionButton icon={<ResetIcon className="h-5 w-5" />} color="gray" />
+                            <ActionButton icon={<DownloadIcon className="h-5 w-5" />} color="green" />
+                            <ActionButton icon={<UploadIcon className="h-5 w-5" />} color="green" />
+                        </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                        <div className="flex justify-between items-center mb-4 text-sm">
+                             <div className="flex items-center">
+                                {/* Disabled selection for General Queue view as per now, or keep enabled for future use */}
+                                <input 
+                                    type="checkbox" 
+                                    id="select-all-general" 
+                                    checked={selectedDossierIds.length === allDocumentsMock.length && allDocumentsMock.length > 0}
+                                    onChange={handleToggleSelectAll}
+                                    className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
+                                />
+                                <label htmlFor="select-all-general" className="ml-2 font-medium text-gray-700 select-none cursor-pointer">Selecionar todos</label>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <div className="flex items-center space-x-2 text-gray-700">
+                                    <span>Mostrar:</span>
+                                    <SelectInput options={['Todos', '10', '25', '50']} defaultValue="Todos" />
+                                    <span>itens</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {docsViewMode === 'table' ? (
+                            <DocumentTable 
+                                documents={sortedDocs} 
+                                sortConfig={sortConfig} 
+                                onSort={handleSort} 
+                                selectedIds={selectedDossierIds}
+                                onToggleOne={handleToggleSelectOne}
+                            />
+                        ) : (
+                            <div className="space-y-3">
+                                {sortedDocs.map(doc => <DocumentItem key={doc.id} doc={doc} />)}
+                            </div>
+                        )}
+
+                         <div className="mt-4 flex justify-center items-center space-x-1">
+                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50"><ChevronLeftIcon className="h-5 w-5"/></button>
+                            <button className="px-4 py-2 text-sm rounded-md bg-[#005c9e] text-white">1</button>
+                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors">2</button>
+                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors">3</button>
+                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50"><ChevronRightIcon className="h-5 w-5"/></button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+      )}
     </div>
   );
 };
@@ -162,12 +346,10 @@ interface AccordionItemProps {
     onManageQueueClick: (manager: Manager) => void;
 }
 
-type SortKey = 'bolsao' | 'docsAtribuidos';
-type SortDirection = 'asc' | 'desc';
-
 const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle, onAssignClick, onManageQueueClick }) => {
+    // ... logic remains same ...
     const [activeBolsaoTab, setActiveBolsaoTab] = useState<string>('Todos');
-    const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: null, direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState<{ key: UserSortKey | null; direction: SortDirection }>({ key: null, direction: 'asc' });
 
     // Extract unique bolsoes from users
     const uniqueBolsoes = Array.from(new Set(manager.users.map(u => u.bolsao).filter(Boolean))) as string[];
@@ -180,7 +362,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
         return user.bolsao === activeBolsaoTab;
     });
     
-    const handleSort = (key: SortKey) => {
+    const handleSort = (key: UserSortKey) => {
         let direction: SortDirection = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
             direction = 'desc';
@@ -216,7 +398,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
         return sortableUsers;
     }, [filteredUsers, sortConfig]);
 
-    const getSortIcon = (key: SortKey) => {
+    const getSortIcon = (key: UserSortKey) => {
         if (sortConfig.key !== key) {
             return <ChevronDownIcon className="h-3 w-3 text-gray-300" />;
         }
@@ -249,7 +431,6 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                       className="bg-[#005c9e] text-white text-sm px-4 py-2 rounded-md flex items-center space-x-2 hover:bg-[#004a7c] active:scale-95 transition-all"
                       onClick={(e) => { 
                           e.stopPropagation(); 
-                          // Construct a temporary User object for the Manager so the title is correct on the next screen
                           const managerAsUser: User = {
                               matricula: `GEST-${manager.id}`,
                               nomeCompleto: manager.name,
@@ -258,7 +439,6 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ manager, isOpen, onToggle
                               docsAtribuidos: [],
                               bolsao: 'Gestão'
                           };
-                          // Construct Bolsao objects for the manager's view
                           const bolsoes: Bolsao[] = uniqueBolsoes.map((name, idx) => ({
                               id: idx + 1,
                               name: name,
