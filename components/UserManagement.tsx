@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Manager, User, AssignedDoc, Bolsao, Document } from '../types';
-import { SearchIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, AssignIcon, CloseIcon, SlidersIcon, FileTextIcon, ListIcon, LayoutGridIcon, ResetIcon, DownloadIcon, UploadIcon } from './Icons';
+import { SearchIcon, ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon, AssignIcon, CloseIcon, SlidersIcon, FileTextIcon, ListIcon, LayoutGridIcon, ResetIcon, DownloadIcon, UploadIcon, FilterIcon } from './Icons';
 import DocumentAssignment from './DocumentAssignment';
 import QueueManagement from './QueueManagement';
 import { DocumentTable, DocumentItem, TextInput, SelectInput, DateInput, ActionButton } from './SharedDocumentComponents';
@@ -63,6 +63,16 @@ const allDocumentsMock: Document[] = [
     { id: '543', nrDoc: '71657_9001319854844_22001_0008020420670_1.pdf', cat: 'Simplificada', stat: '1ª Análise', dtAssin: '01/09/1988', mut: 'ROSANGELA FERREIRA', tipoEvt: 'L10', or: '32', planReaj: 'EQ1 1 P 06 CTP', im: '07', fh2: 'Não', fh3: 'Não', cess: 'Não', cef: '0910', codigoFh2: 'Cód FH2', gestor: 'Celeste Mayumi', bolsao: 'Bolsão Minas Gerais' },
     { id: '546', nrDoc: '32138_10104932667_85053_9948000312011_1.pdf', cat: 'Simplificada', stat: 'Pedido Reanálise', dtAssin: '20/06/1983', mut: 'AROLDO GUEDES', tipoEvt: 'L13', or: '32', planReaj: 'PES 1 A 04 UPC', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '1000', codigoFh2: 'Cód FH2', gestor: 'Tarsila Correa', bolsao: 'Bolsão RJ Capital' },
     { id: '999', nrDoc: '11111_000000000000_1.pdf', cat: 'Completa', stat: 'Pendente', dtAssin: '10/01/2023', mut: 'JOAO DA SILVA', tipoEvt: 'L99', or: '01', planReaj: 'N/A', im: '00', fh2: 'Não', fh3: 'Não', cess: 'Não', cef: '0000', codigoFh2: 'Cód FH2', gestor: '', bolsao: '' },
+    { id: '1001', nrDoc: '11111_000000000001_1.pdf', cat: 'Simplificada', stat: 'Pendente', dtAssin: '11/01/2023', mut: 'MARIA OLIVEIRA', tipoEvt: 'L99', or: '02', planReaj: 'N/A', im: '01', fh2: 'Sim', fh3: 'Não', cess: 'Não', cef: '1000', codigoFh2: 'Cód FH2', gestor: '', bolsao: '' },
+    { id: '1002', nrDoc: '11111_000000000002_1.pdf', cat: 'Completa', stat: 'Em Análise', dtAssin: '12/01/2023', mut: 'JOSE PEREIRA', tipoEvt: 'L10', or: '03', planReaj: 'EQ1', im: '02', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '2000', codigoFh2: 'Cód FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Análise Simples' },
+    { id: '1003', nrDoc: '11111_000000000003_1.pdf', cat: 'Simplificada', stat: '1ª Análise', dtAssin: '13/01/2023', mut: 'ANA COSTA', tipoEvt: 'L13', or: '04', planReaj: 'PES', im: '03', fh2: 'Sim', fh3: 'Sim', cess: 'Não', cef: '3000', codigoFh2: 'Cód FH2', gestor: 'Celeste Mayumi', bolsao: 'Bolsão Minas Gerais' },
+    { id: '1004', nrDoc: '11111_000000000004_1.pdf', cat: 'Completa', stat: 'Pedido Reanálise', dtAssin: '14/01/2023', mut: 'CARLOS SOUZA', tipoEvt: 'L13', or: '05', planReaj: 'EQ1', im: '04', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '4000', codigoFh2: 'Cód FH2', gestor: 'Tarsila Correa', bolsao: 'Bolsão RJ Capital' },
+    { id: '1005', nrDoc: '11111_000000000005_1.pdf', cat: 'Simplificada', stat: 'Pendente', dtAssin: '15/01/2023', mut: 'PAULO SANTOS', tipoEvt: 'L99', or: '06', planReaj: 'N/A', im: '05', fh2: 'Sim', fh3: 'Não', cess: 'Não', cef: '5000', codigoFh2: 'Cód FH2', gestor: '', bolsao: '' },
+    { id: '1006', nrDoc: '11111_000000000006_1.pdf', cat: 'Completa', stat: 'Em Análise', dtAssin: '16/01/2023', mut: 'LUCIA GOMES', tipoEvt: 'L10', or: '07', planReaj: 'PES', im: '06', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '6000', codigoFh2: 'Cód FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Prioritário' },
+    { id: '1007', nrDoc: '11111_000000000007_1.pdf', cat: 'Simplificada', stat: '1ª Análise', dtAssin: '17/01/2023', mut: 'MARCOS DIAS', tipoEvt: 'L13', or: '08', planReaj: 'EQ1', im: '07', fh2: 'Sim', fh3: 'Sim', cess: 'Não', cef: '7000', codigoFh2: 'Cód FH2', gestor: 'Celeste Mayumi', bolsao: 'Bolsão Minas Gerais' },
+    { id: '1008', nrDoc: '11111_000000000008_1.pdf', cat: 'Completa', stat: 'Pedido Reanálise', dtAssin: '18/01/2023', mut: 'RITA LIMA', tipoEvt: 'L13', or: '09', planReaj: 'PES', im: '08', fh2: 'Não', fh3: 'Não', cess: 'Sim', cef: '8000', codigoFh2: 'Cód FH2', gestor: 'Tarsila Correa', bolsao: 'Bolsão RJ Capital' },
+    { id: '1009', nrDoc: '11111_000000000009_1.pdf', cat: 'Simplificada', stat: 'Pendente', dtAssin: '19/01/2023', mut: 'BRUNO ALVES', tipoEvt: 'L99', or: '10', planReaj: 'N/A', im: '09', fh2: 'Sim', fh3: 'Não', cess: 'Não', cef: '9000', codigoFh2: 'Cód FH2', gestor: '', bolsao: '' },
+    { id: '1010', nrDoc: '11111_000000000010_1.pdf', cat: 'Completa', stat: 'Em Análise', dtAssin: '20/01/2023', mut: 'SONIA ROCHA', tipoEvt: 'L10', or: '11', planReaj: 'EQ1', im: '10', fh2: 'Não', fh3: 'Sim', cess: 'Sim', cef: '1010', codigoFh2: 'Cód FH2', gestor: 'Guilherme Calabresi', bolsao: 'Bolsão Prioritário' },
 ];
 
 const bolsaoQueueStats: Record<string, number> = {
@@ -84,13 +94,19 @@ const UserManagement: React.FC = () => {
   const [managingQueueFor, setManagingQueueFor] = useState<Manager | null>(null);
   const [managedBolsoes, setManagedBolsoes] = useState<Bolsao[] | undefined>(undefined);
   
-  // New State for View Mode
-  const [viewMode, setViewMode] = useState<ViewMode>('manager');
+  const [viewMode, setViewMode] = useState<ViewMode>('general');
   
   // General Queue State
   const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; direction: SortDirection }>({ key: 'id', direction: 'asc' });
   const [selectedDossierIds, setSelectedDossierIds] = useState<string[]>([]);
-  const [docsViewMode, setDocsViewMode] = useState<'table' | 'card'>('table');
+  const [selectedBolsaoFilter, setSelectedBolsaoFilter] = useState('Todos');
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // FIX: Explicitly typing activeFilterCount as number to avoid literal type inference.
+  const activeFilterCount: number = 3; // Mock value for demonstration
+
+  const allBolsoes = useMemo(() => Array.from(new Set(allDocumentsMock.map(doc => doc.bolsao).filter(Boolean))), []);
 
   const toggleManager = (id: number) => {
     setOpenManagerId(openManagerId === id ? null : id);
@@ -121,10 +137,21 @@ const UserManagement: React.FC = () => {
           direction = 'desc';
       }
       setSortConfig({ key, direction });
+      setCurrentPage(1); // Reset to first page on sort
   };
 
   const sortedDocs = useMemo(() => {
       let sortableItems = [...allDocumentsMock];
+      
+      if (selectedBolsaoFilter !== 'Todos') {
+        sortableItems = sortableItems.filter(doc => {
+          if (selectedBolsaoFilter === 'Sem Bolsão') {
+            return !doc.bolsao || doc.bolsao === '';
+          }
+          return doc.bolsao === selectedBolsaoFilter;
+        });
+      }
+
       if (sortConfig.key) {
           sortableItems.sort((a, b) => {
               let aValue: string | number | undefined;
@@ -146,13 +173,19 @@ const UserManagement: React.FC = () => {
           });
       }
       return sortableItems;
-  }, [sortConfig]);
+  }, [sortConfig, selectedBolsaoFilter]);
+  
+  const paginatedDocs = useMemo(() => {
+    return sortedDocs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  }, [sortedDocs, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(sortedDocs.length / itemsPerPage);
 
   const handleToggleSelectAll = () => {
-    if (selectedDossierIds.length === allDocumentsMock.length && allDocumentsMock.length > 0) {
+    if (selectedDossierIds.length === paginatedDocs.length && paginatedDocs.length > 0) {
         setSelectedDossierIds([]);
     } else {
-        setSelectedDossierIds(allDocumentsMock.map(d => d.id));
+        setSelectedDossierIds(paginatedDocs.map(d => d.id));
     }
   };
 
@@ -250,90 +283,113 @@ const UserManagement: React.FC = () => {
                     </div>
                 </>
             ) : (
-                <div className="bg-white rounded-md border border-gray-200 p-4 shadow-sm animate-fade-in">
-                    <h3 className="text-lg font-medium text-gray-700 mb-4">Fila Geral de Documentos</h3>
-                    
-                    {/* Reusing Filters Structure exactly as in DocumentAssignment */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mb-4">
-                        <div className="col-span-full">
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <SearchIcon className="h-5 w-5 text-gray-400"/>
-                                </div>
-                                <input type="text" placeholder="Buscar documentos na fila geral..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-50 focus:bg-white text-gray-800 placeholder-gray-500 focus:ring-1 focus:ring-[#005c9e] outline-none transition-colors"/>
-                             </div>
+                <div className="animate-fade-in">
+                    <div className="sticky top-0 bg-white z-10 -mx-6 -mt-6 px-6 pt-4 pb-4 border-b border-gray-200 shadow-sm">
+                        <h3 className="text-lg font-medium text-gray-700 mb-4">Fila Geral de Documentos</h3>
+                        
+                        <div className="relative col-span-full mb-4">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <SearchIcon className="h-5 w-5 text-gray-400"/>
+                            </div>
+                            <input type="text" placeholder="Buscar documentos na fila geral por ID, Nr. Doc. ou Mutuário..." className="w-full p-2 pl-10 border border-gray-300 rounded-md bg-gray-50 focus:bg-white text-gray-800 placeholder-gray-500 focus:ring-1 focus:ring-[#005c9e] outline-none transition-colors"/>
                         </div>
-                        <div className="lg:col-span-3"><MultiSelect label="Grupo Credor" options={grupoCredorOptions} /></div>
-                        <div className="lg:col-span-3"><MultiSelect label="Agente Financeiro" options={agenteFinanceiroOptions} /></div>
-                        <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
-                        <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
                         
-                        <div className="lg:col-span-2"><MultiSelect label="Categoria" options={categoriaOptions} /></div>
-                        <div className="lg:col-span-2"><SelectInput label="Status" /></div>
-                        <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
-                        <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
-                        <div className="lg:col-span-2"><TextInput label="OR" /></div>
-                        <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center space-x-2">
+                                <button onClick={() => setIsFiltersExpanded(!isFiltersExpanded)} className="flex items-center space-x-2 text-sm font-medium text-[#005c9e] hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors">
+                                    <FilterIcon className="h-4 w-4" />
+                                    <span>{isFiltersExpanded ? 'Ocultar filtros' : 'Mostrar filtros'}</span>
+                                    {isFiltersExpanded ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+                                </button>
+                                {!isFiltersExpanded && activeFilterCount > 0 && (
+                                    <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-md">
+                                        <span className="font-semibold">{activeFilterCount}</span> {activeFilterCount === 1 ? 'filtro aplicado' : 'filtros aplicados'}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-end space-x-2">
+                                <ActionButton icon={<SearchIcon className="h-5 w-5" />} color="blue" />
+                                <ActionButton icon={<ResetIcon className="h-5 w-5" />} color="gray" />
+                                <ActionButton icon={<DownloadIcon className="h-5 w-5" />} color="green" />
+                                <ActionButton icon={<UploadIcon className="h-5 w-5" />} color="green" />
+                            </div>
+                        </div>
 
-                        <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
-                        <div className="lg:col-span-3"><MultiSelect label="IM" options={imOptions} /></div>
-                        <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
-                        <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
-
-                        <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
-                        <div className="lg:col-span-4"><DateInput label="até" /></div>
-                        <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
+                        {isFiltersExpanded && (
+                            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 text-sm mt-4 pt-4 border-t animate-fade-in">
+                                <div className="lg:col-span-3"><MultiSelect label="Grupo Credor" options={grupoCredorOptions} /></div>
+                                <div className="lg:col-span-3"><MultiSelect label="Agente Financeiro" options={agenteFinanceiroOptions} /></div>
+                                <div className="lg:col-span-3"><SelectInput label="Hipoteca" /></div>
+                                <div className="lg:col-span-3"><SelectInput label="FH 1/2/3" /></div>
+                                <div className="lg:col-span-2"><MultiSelect label="Categoria" options={categoriaOptions} /></div>
+                                <div className="lg:col-span-2"><SelectInput label="Status" /></div>
+                                <div className="lg:col-span-2"><TextInput label="Nome do Mutuário" /></div>
+                                <div className="lg:col-span-2"><TextInput label="Tipo de Evento" /></div>
+                                <div className="lg:col-span-2"><TextInput label="OR" /></div>
+                                <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
+                                <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
+                                <div className="lg:col-span-3"><MultiSelect label="IM" options={imOptions} /></div>
+                                <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
+                                <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
+                                <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
+                                <div className="lg:col-span-4"><DateInput label="até" /></div>
+                                <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
+                            </div>
+                        )}
                         
-                        <div className="col-span-full flex justify-end items-end space-x-2 border-t pt-4">
-                            <ActionButton icon={<SearchIcon className="h-5 w-5" />} color="blue" />
-                            <ActionButton icon={<ResetIcon className="h-5 w-5" />} color="gray" />
-                            <ActionButton icon={<DownloadIcon className="h-5 w-5" />} color="green" />
-                            <ActionButton icon={<UploadIcon className="h-5 w-5" />} color="green" />
+                         <div className="flex justify-between items-center text-sm pt-4 mt-4 border-t">
+                            <div className="flex items-center space-x-6">
+                                <div className="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        id="select-all-general" 
+                                        checked={paginatedDocs.length > 0 && selectedDossierIds.length === paginatedDocs.length}
+                                        onChange={handleToggleSelectAll}
+                                        className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
+                                    />
+                                    <label htmlFor="select-all-general" className="ml-2 font-medium text-gray-700 select-none cursor-pointer">Selecionar todos</label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <label className="text-gray-700 font-medium">Bolsão:</label>
+                                    <div className="w-56">
+                                        <SelectInput 
+                                            options={['Todos', 'Sem Bolsão', ...allBolsoes]}
+                                            value={selectedBolsaoFilter}
+                                            onChange={(e) => { setSelectedBolsaoFilter(e.target.value); setCurrentPage(1); }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-700">
+                                <span>Mostrar:</span>
+                                <SelectInput 
+                                    options={['10', '25', '50']} 
+                                    value={String(itemsPerPage)} 
+                                    onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                                />
+                                <span>itens</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="border-t pt-4">
-                        <div className="flex justify-between items-center mb-4 text-sm">
-                             <div className="flex items-center">
-                                {/* Disabled selection for General Queue view as per now, or keep enabled for future use */}
-                                <input 
-                                    type="checkbox" 
-                                    id="select-all-general" 
-                                    checked={selectedDossierIds.length === allDocumentsMock.length && allDocumentsMock.length > 0}
-                                    onChange={handleToggleSelectAll}
-                                    className="h-4 w-4 text-[#005c9e] border-gray-300 rounded focus:ring-[#005c9e] cursor-pointer"
-                                />
-                                <label htmlFor="select-all-general" className="ml-2 font-medium text-gray-700 select-none cursor-pointer">Selecionar todos</label>
+                    <div className="mt-4">
+                        <DocumentTable 
+                            documents={paginatedDocs} 
+                            sortConfig={sortConfig} 
+                            onSort={handleSort} 
+                            selectedIds={selectedDossierIds}
+                            onToggleOne={handleToggleSelectOne}
+                        />
+                        
+                        <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
+                            <div>
+                                Exibindo <span className="font-semibold">{Math.min((currentPage - 1) * itemsPerPage + 1, sortedDocs.length)}</span> a <span className="font-semibold">{Math.min(currentPage * itemsPerPage, sortedDocs.length)}</span> de <span className="font-semibold">{sortedDocs.length}</span> resultados
                             </div>
                             <div className="flex items-center space-x-1">
-                                <div className="flex items-center space-x-2 text-gray-700">
-                                    <span>Mostrar:</span>
-                                    <SelectInput options={['Todos', '10', '25', '50']} defaultValue="Todos" />
-                                    <span>itens</span>
-                                </div>
+                                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronLeftIcon className="h-5 w-5"/></button>
+                                <span className="px-2">Página {currentPage} de {totalPages}</span>
+                                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronRightIcon className="h-5 w-5"/></button>
                             </div>
-                        </div>
-
-                        {docsViewMode === 'table' ? (
-                            <DocumentTable 
-                                documents={sortedDocs} 
-                                sortConfig={sortConfig} 
-                                onSort={handleSort} 
-                                selectedIds={selectedDossierIds}
-                                onToggleOne={handleToggleSelectOne}
-                            />
-                        ) : (
-                            <div className="space-y-3">
-                                {sortedDocs.map(doc => <DocumentItem key={doc.id} doc={doc} />)}
-                            </div>
-                        )}
-
-                         <div className="mt-4 flex justify-center items-center space-x-1">
-                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50"><ChevronLeftIcon className="h-5 w-5"/></button>
-                            <button className="px-4 py-2 text-sm rounded-md bg-[#005c9e] text-white">1</button>
-                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors">2</button>
-                            <button className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors">3</button>
-                            <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500 disabled:opacity-50"><ChevronRightIcon className="h-5 w-5"/></button>
                         </div>
                     </div>
                 </div>

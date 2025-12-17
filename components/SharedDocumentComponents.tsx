@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Document } from '../types';
 import { ChevronDownIcon, ChevronUpIcon, CalendarIcon } from './Icons';
@@ -82,7 +81,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             {tableHeaders.map(({key}) => {
                                 if (key === 'filaOrigem') {
                                     return <td key={`${doc.id}-${key}`} className="px-4 py-3 whitespace-nowrap text-gray-700">
-                                        {doc.gestor && doc.bolsao ? (
+                                        {doc.bolsao ? (
                                             <div className="flex flex-col">
                                                 <span className="font-semibold text-[#005c9e]">{doc.bolsao}</span>
                                                 <span className="text-gray-500 text-[10px]">{doc.gestor}</span>
@@ -144,12 +143,23 @@ export const TextInput: React.FC<{ label?: string }> = ({ label }) => (
     </div>
 );
 
-export const SelectInput: React.FC<{ label?: string, options?: string[], defaultValue?: string }> = ({ label, options=['Opção 1', 'Opção 2'], defaultValue }) => (
+export const SelectInput: React.FC<{
+    label?: string;
+    options?: string[];
+    defaultValue?: string;
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+}> = ({ label, options=['Opção 1', 'Opção 2'], defaultValue, value, onChange }) => (
      <div>
         {label && <label className="block text-gray-500 mb-1">{label}</label>}
         <div className="relative">
-            <select defaultValue={defaultValue} className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-50 text-gray-800 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none">
-                {options.map(opt => <option key={opt}>{opt}</option>)}
+            <select
+                defaultValue={defaultValue}
+                value={value}
+                onChange={onChange}
+                className="w-full p-2 border border-gray-300 rounded-md appearance-none pr-8 bg-gray-50 text-gray-800 focus:bg-white focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] transition-colors outline-none"
+            >
+                {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <ChevronDownIcon className="h-4 w-4"/>
