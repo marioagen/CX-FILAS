@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDownIcon } from './Icons';
 
+type OptionType = string | { isGroupLabel: true; label: string };
+
 interface MultiSelectProps {
   label: string;
-  options: string[];
+  options: OptionType[];
 }
 
 const MultiSelect: React.FC<MultiSelectProps> = ({ label, options }) => {
@@ -33,13 +34,30 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options }) => {
     );
   };
 
-  const filteredOptions = options.filter(option =>
-    option.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOptions = options.filter(option => {
+    if (typeof option === 'object' && option.isGroupLabel) {
+      if (!searchTerm) return true;
+      // Hide group if no items in it match search
+      const groupIndex = options.indexOf(option);
+      const nextGroupIndex = options.findIndex((item, index) => index > groupIndex && typeof item === 'object' && item.isGroupLabel);
+      const itemsInGroup = options.slice(groupIndex + 1, nextGroupIndex !== -1 ? nextGroupIndex : options.length);
+      return itemsInGroup.some(item => typeof item === 'string' && item.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    return typeof option === 'string' && option.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
-  const displayLabel = selectedOptions.length > 0
-    ? `${selectedOptions.length} selecionado(s)`
-    : label;
+  const getDisplayLabel = () => {
+    const count = selectedOptions.length;
+    if (count === 0) {
+      return 'Selecione...';
+    }
+    if (count === 1) {
+      return selectedOptions[0];
+    }
+    return `${selectedOptions[0]} +${count - 1}`;
+  };
+
+  const displayLabel = getDisplayLabel();
 
   return (
     <div>
@@ -48,9 +66,9 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options }) => {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-800 flex justify-between items-center text-left"
+                className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-gray-800 flex justify-between items-center text-left focus:bg-white focus:ring-1 focus:ring-[#005c9e] outline-none transition-colors"
             >
-                <span className={selectedOptions.length > 0 ? "font-medium text-gray-800" : "text-gray-500"}>{displayLabel}</span>
+                <span className={`block truncate ${selectedOptions.length > 0 ? "font-medium text-gray-800" : "text-gray-500"}`}>{displayLabel}</span>
                 <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
@@ -65,20 +83,30 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options }) => {
                         />
                     </div>
                     <ul className="overflow-y-auto flex-grow">
-                        {filteredOptions.map(option => (
-                            <li key={option} className="p-2 hover:bg-blue-50 cursor-pointer flex items-center" onClick={() => handleToggleOption(option)}>
-                                <input
-                                    type="checkbox"
-                                    readOnly
-                                    checked={selectedOptions.includes(option)}
-                                    className="h-4 w-4 rounded border-gray-300 text-[#005c9e] focus:ring-[#005c9e] mr-3 pointer-events-none accent-[#005c9e]"
-                                />
-                                <span className="w-full cursor-pointer select-none text-gray-800">
-                                    {option}
-                                </span>
-                            </li>
-                        ))}
-                        {filteredOptions.length === 0 && (
+                        {filteredOptions.map((option, index) => {
+                             if (typeof option === 'object' && option.isGroupLabel) {
+                                return (
+                                    <li key={`${option.label}-${index}`} className="px-3 py-2 text-xs font-bold text-gray-500 uppercase bg-gray-100">
+                                        {option.label}
+                                    </li>
+                                );
+                            }
+                            const optionValue = option as string;
+                            return (
+                                <li key={optionValue} className="p-2 hover:bg-blue-50 cursor-pointer flex items-center" onClick={() => handleToggleOption(optionValue)}>
+                                    <input
+                                        type="checkbox"
+                                        readOnly
+                                        checked={selectedOptions.includes(optionValue)}
+                                        className="h-4 w-4 rounded border-gray-300 text-[#005c9e] focus:ring-[#005c9e] mr-3 pointer-events-none accent-[#005c9e]"
+                                    />
+                                    <span className="w-full cursor-pointer select-none text-gray-800">
+                                        {optionValue}
+                                    </span>
+                                </li>
+                            );
+                        })}
+                        {filteredOptions.filter(o => typeof o === 'string').length === 0 && searchTerm && (
                             <li className="p-2 text-gray-500 text-sm text-center">Nenhuma opção encontrada</li>
                         )}
                     </ul>

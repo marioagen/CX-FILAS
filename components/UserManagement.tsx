@@ -175,6 +175,12 @@ const UserManagement: React.FC = () => {
   const grupoCredorOptions = [ 'Bancos Privados', 'COHAB', 'CAIXA', 'Entes Públicos', 'Liquidandas', 'Outros' ];
   const agenteFinanceiroOptions = [ '22000 - BANCO UBS PACTUAL / PREVISUL', '22001 - BANCO ITAÚ / BANESTADO', '50013 - BANCO DE CRÉITO NACIONAL S/A - BCN S/A', '50048 - BANCO SANTANDER BRASIL S/A', '50137 - BANCO REAL S/A' ];
   const categoriaOptions = [ 'AJ - Cumprimento', 'AJ - Subsídio', 'Pedidos GECVS', 'Ofício Vencido', 'Pedido AF', 'Reanálise (Inadequado AUDIR)' ];
+  const imOptions = [
+    { isGroupLabel: true, label: 'Normais' },
+    '00', '01', '02', '03', '08', '10', '11', '12', '20', '21', '22', '28', '23', '25', '26',
+    { isGroupLabel: true, label: 'Especial' },
+    '07', '13', '14', '35', '15', '16', '17', '18', '24', '29', '30', '31', '46', '34', '32'
+  ];
 
   return (
     <div className="bg-white rounded-lg shadow p-4 sm:p-6">
@@ -270,7 +276,7 @@ const UserManagement: React.FC = () => {
                         <div className="lg:col-span-2"><TextInput label="Plano de Reajustamento" /></div>
 
                         <div className="lg:col-span-3"><TextInput label="%CEF" /></div>
-                        <div className="lg:col-span-3"><TextInput label="IM" /></div>
+                        <div className="lg:col-span-3"><MultiSelect label="IM" options={imOptions} /></div>
                         <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
                         <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
 

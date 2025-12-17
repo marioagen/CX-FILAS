@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SearchIcon, ChevronDownIcon, CalendarIcon, XCircleIcon, UserRoundIcon, AssignIcon, EyeIcon, RefreshCwIcon, ZapIcon } from './Icons';
 import { UserProfile } from '../types';
 
@@ -20,13 +19,13 @@ interface AnalysisDocument {
 
 const initialDocumentsData: AnalysisDocument[] = [
   { id: '1945', numeroDossie: '9001318222023_29_000008184674_1.pdf', dataInicial: '09/12/2025 11:04', status: 'Aguardando Pré-Análise', acaoAtribuido: true, acaoPreAnalise: true },
-  { id: '2170', numeroDossie: '9001318223722_53122_0009040035122_1.pdf', dataInicial: '08/12/2025 16:10', dataFinalizacao: '10/12/2025 15:19', status: 'Analisado', atribuidoPara: 'Daniel Souza', acaoAtribuido: true, acaoVisualizar: true, acaoReprocessar: true },
-  { id: '1859', numeroDossie: '142309_9001320827137_53131_9095894450341_1', dataInicial: '03/12/2025 17:16', dataFinalizacao: '04/12/2025 15:24', status: 'Conforme', fh123: 'FH1', atribuidoPara: 'Eduardo Bexiga', acaoVisualizar: true },
+  { id: '2170', numeroDossie: '9001318223722_53122_0009040035122_1.pdf', dataInicial: '08/12/2025 16:10', dataFinalizacao: '10/12/2025 15:19', status: 'Analisado', atribuidoPara: 'Analista Teste', acaoAtribuido: true, acaoVisualizar: true, acaoReprocessar: true },
+  { id: '1859', numeroDossie: '142309_9001320827137_53131_9095894450341_1', dataInicial: '03/12/2025 17:16', dataFinalizacao: '04/12/2025 15:24', status: 'Conforme', fh123: 'FH1', atribuidoPara: 'Analista Teste', acaoVisualizar: true },
   { id: '1581', numeroDossie: '10106620963_12_0000160035021_1.pdf', dataInicial: '03/12/2025 15:38', dataFinalizacao: '03/12/2025 17:25', status: 'Conforme', fh123: 'FH1', atribuidoPara: 'Daniel Souza', acaoVisualizar: true },
   { id: '1534', numeroDossie: '132736_9001319657709_53145_0000010006290_1', dataInicial: '02/12/2025 20:56', status: 'Aguardando Pré-Análise', fh123: 'FH1', acaoAtribuido: true, acaoPreAnalise: true },
   { id: '1953', numeroDossie: '03100437686_52126_0000332200930_1.pdf', dataInicial: '02/12/2025 20:43', status: 'Aguardando Pré-Análise', acaoAtribuido: true, acaoPreAnalise: true },
   { id: '1955', numeroDossie: '10104828976_53150_0000000534714_1.pdf', dataInicial: '02/12/2025 20:43', status: 'Aguardando Pré-Análise', acaoAtribuido: true, acaoPreAnalise: true },
-  { id: '1957', numeroDossie: '9001318222229_29_0070900013_1.pdf', dataInicial: '02/12/2025 20:42', status: 'Pré-Análise', atribuidoPara: 'Karina Ramos', acaoAtribuido: true },
+  { id: '1957', numeroDossie: '9001318222229_29_0070900013_1.pdf', dataInicial: '02/12/2025 20:42', status: 'Pré-Análise', atribuidoPara: 'Analista Teste', acaoAtribuido: true },
   { id: '1963', numeroDossie: '9001318223753_53145_0009040035115_1.pdf', dataInicial: '02/12/2025 20:39', status: 'Pré-Análise', atribuidoPara: 'Elvio Trindade', acaoAtribuido: true },
   { id: '1966', numeroDossie: '10000000_12_0000060071000_1.pdf', dataInicial: '02/12/2025 20:36', status: 'Pré-Análise', atribuidoPara: 'Roberto Dias', acaoAtribuido: true },
 ];
@@ -36,9 +35,10 @@ interface DocumentAnalysisPageProps {
 }
 
 const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile }) => {
-  const [analysisDocuments, setAnalysisDocuments] = useState<AnalysisDocument[]>(initialDocumentsData);
+  const [allAnalysisDocuments, setAllAnalysisDocuments] = useState<AnalysisDocument[]>(initialDocumentsData);
   const [isAssigning, setIsAssigning] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+  const [showOnlyMyDossiers, setShowOnlyMyDossiers] = useState(true);
 
   useEffect(() => {
     if (notification) {
@@ -47,16 +47,23 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
     }
   }, [notification]);
 
+  const displayedDocuments = useMemo(() => {
+    if (showOnlyMyDossiers) {
+      return allAnalysisDocuments.filter(doc => doc.atribuidoPara === userProfile.name);
+    }
+    return allAnalysisDocuments;
+  }, [showOnlyMyDossiers, allAnalysisDocuments, userProfile.name]);
+
   const handleGetNextDossier = () => {
     setIsAssigning(true);
     setNotification(null);
 
     setTimeout(() => {
-      const nextDocIndex = analysisDocuments.findIndex(doc => doc.status === 'Aguardando Pré-Análise');
+      const nextDocIndex = allAnalysisDocuments.findIndex(doc => doc.status === 'Aguardando Pré-Análise');
       
       if (nextDocIndex !== -1) {
-        const docToAssign = analysisDocuments[nextDocIndex];
-        const updatedDocuments = [...analysisDocuments];
+        const docToAssign = allAnalysisDocuments[nextDocIndex];
+        const updatedDocuments = [...allAnalysisDocuments];
         updatedDocuments[nextDocIndex] = {
           ...docToAssign,
           status: 'Pré-Análise',
@@ -64,7 +71,7 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
           acaoPreAnalise: false, // Now assigned, so can't pre-analyze again
           acaoVisualizar: true, // Can now view it
         };
-        setAnalysisDocuments(updatedDocuments);
+        setAllAnalysisDocuments(updatedDocuments);
         setNotification({ message: `Dossiê ID ${docToAssign.id} atribuído a você.`, type: 'success' });
       } else {
         setNotification({ message: 'Não há dossiês disponíveis na sua fila no momento.', type: 'info' });
@@ -126,7 +133,15 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
             <DateInput placeholder="dd/mm/aaaa" />
 
             <div className="flex items-center space-x-2">
-                <button className="p-2.5 rounded-md text-gray-500 hover:bg-gray-100">
+                <button 
+                    onClick={() => setShowOnlyMyDossiers(!showOnlyMyDossiers)}
+                    className={`p-2.5 rounded-md transition-colors ${
+                        showOnlyMyDossiers 
+                        ? 'bg-orange-500 text-white hover:bg-orange-600' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    title={showOnlyMyDossiers ? "Mostrar todos os dossiês" : "Mostrar apenas meus dossiês"}
+                >
                     <UserRoundIcon className="h-5 w-5"/>
                 </button>
                 <button className="bg-[#005c9e] text-white p-2.5 rounded-md hover:bg-[#004a7c]">
@@ -152,7 +167,7 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {analysisDocuments.map((doc) => (
+            {displayedDocuments.map((doc) => (
               <tr key={doc.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.numeroDossie}</td>
@@ -193,6 +208,13 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
                 </td>
               </tr>
             ))}
+             {displayedDocuments.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-10 text-gray-500">
+                  {showOnlyMyDossiers ? 'Você não tem dossiês atribuídos no momento.' : 'Nenhum dossiê encontrado.'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -200,7 +222,7 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
       {/* Pagination */}
       <div className="mt-4 p-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600">
         <div className="mb-2 sm:mb-0">
-          Exibindo 1 a 10 do total de 436 itens
+          Exibindo {displayedDocuments.length > 0 ? '1' : '0'} a {displayedDocuments.length < 10 ? displayedDocuments.length : 10} do total de {displayedDocuments.length} itens
         </div>
         <div className="flex items-center space-x-1">
           <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500">
