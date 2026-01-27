@@ -107,6 +107,7 @@ const UserManagement: React.FC = () => {
   const activeFilterCount: number = 3; // Mock value for demonstration
 
   const allBolsoes = useMemo(() => Array.from(new Set(allDocumentsMock.map(doc => doc.bolsao).filter(Boolean))), []);
+  const managerOptions = useMemo(() => managersData.map(m => m.name), []);
 
   const toggleManager = (id: number) => {
     setOpenManagerId(openManagerId === id ? null : id);
@@ -331,9 +332,11 @@ const UserManagement: React.FC = () => {
                                 <div className="lg:col-span-3"><MultiSelect label="IM" options={imOptions} /></div>
                                 <div className="lg:col-span-3"><SelectInput label="Indicador de Cessão" /></div>
                                 <div className="lg:col-span-3"><TextInput label="Código FH2" /></div>
-                                <div className="lg:col-span-4"><DateInput label="Data assinatura" /></div>
-                                <div className="lg:col-span-4"><DateInput label="até" /></div>
-                                <div className="lg:col-span-4"><DateInput label="Liberação da GD" /></div>
+                                <div className="lg:col-span-2"><DateInput label="Data assinatura" /></div>
+                                <div className="lg:col-span-2"><DateInput label="até" /></div>
+                                <div className="lg:col-span-2"><DateInput label="Liberação da GD" /></div>
+                                <div className="lg:col-span-3"><MultiSelect label="Gestores" options={managerOptions} /></div>
+                                <div className="lg:col-span-3"><MultiSelect label="Bolsões" options={allBolsoes} /></div>
                             </div>
                         )}
                         
