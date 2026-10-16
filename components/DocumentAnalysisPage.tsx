@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { SearchIcon, ChevronDownIcon, CalendarIcon, XCircleIcon, UserRoundIcon, AssignIcon, EyeIcon, RefreshCwIcon, ZapIcon } from './Icons';
+import { SearchIcon, ChevronDownIcon, CalendarIcon, XCircleIcon, UserRoundIcon, AssignIcon, EyeIcon, RefreshCwIcon, ZapIcon, FileTextIcon, AlertTriangleIcon } from './Icons';
 import { UserProfile } from '../types';
 
 interface AnalysisDocument {
@@ -7,13 +7,15 @@ interface AnalysisDocument {
   numeroDossie: string;
   dataInicial: string;
   dataFinalizacao?: string;
-  status: 'Aguardando Pré-Análise' | 'Analisado' | 'Conforme' | 'Pré-Análise';
+  status: 'Aguardando Pré-Análise' | 'Aguardando análise' | 'Analisado' | 'Conforme' | 'Pré-Análise';
   diasRestantes?: number;
   fh123?: string;
   acaoAtribuido?: boolean;
   acaoVisualizar?: boolean;
   acaoPreAnalise?: boolean;
   acaoReprocessar?: boolean;
+  acaoAnalisar?: boolean;
+  pendente?: boolean;
   atribuidoPara?: string;
 }
 
@@ -25,20 +27,23 @@ const initialDocumentsData: AnalysisDocument[] = [
   { id: '1534', numeroDossie: '132736_9001319657709_53145_0000010006290_1', dataInicial: '02/12/2025 20:56', status: 'Aguardando Pré-Análise', fh123: 'FH1', acaoAtribuido: true, acaoPreAnalise: true },
   { id: '1953', numeroDossie: '03100437686_52126_0000332200930_1.pdf', dataInicial: '02/12/2025 20:43', status: 'Aguardando Pré-Análise', acaoAtribuido: true, acaoPreAnalise: true },
   { id: '1955', numeroDossie: '10104828976_53150_0000000534714_1.pdf', dataInicial: '02/12/2025 20:43', status: 'Aguardando Pré-Análise', acaoAtribuido: true, acaoPreAnalise: true },
-  { id: '1957', numeroDossie: '9001318222229_29_0070900013_1.pdf', dataInicial: '02/12/2025 20:42', status: 'Pré-Análise', atribuidoPara: 'Analista Teste', acaoAtribuido: true },
-  { id: '1963', numeroDossie: '9001318223753_53145_0009040035115_1.pdf', dataInicial: '02/12/2025 20:39', status: 'Pré-Análise', atribuidoPara: 'Elvio Trindade', acaoAtribuido: true },
+  { id: '1957', numeroDossie: '9001318222229_29_0070900013_1.pdf', dataInicial: '02/12/2025 20:42', status: 'Aguardando análise', atribuidoPara: 'Analista Teste', acaoAtribuido: true, pendente: true, acaoAnalisar: true },
+  { id: '1963', numeroDossie: '9001318223753_53145_0009040035115_1.pdf', dataInicial: '02/12/2025 20:39', status: 'Aguardando análise', atribuidoPara: 'Analista Teste', acaoAtribuido: true, pendente: true, acaoAnalisar: true },
   { id: '1966', numeroDossie: '10000000_12_0000060071000_1.pdf', dataInicial: '02/12/2025 20:36', status: 'Pré-Análise', atribuidoPara: 'Roberto Dias', acaoAtribuido: true },
 ];
 
 interface DocumentAnalysisPageProps {
   userProfile: UserProfile;
+  onAnalyze: (doc: { id: string; numeroDossie: string }) => void;
 }
 
-const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile }) => {
+const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile, onAnalyze }) => {
   const [allAnalysisDocuments, setAllAnalysisDocuments] = useState<AnalysisDocument[]>(initialDocumentsData);
   const [isAssigning, setIsAssigning] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [showOnlyMyDossiers, setShowOnlyMyDossiers] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [filterSemPastasObrigatorias, setFilterSemPastasObrigatorias] = useState(false);
 
   useEffect(() => {
     if (notification) {
@@ -48,11 +53,28 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
   }, [notification]);
 
   const displayedDocuments = useMemo(() => {
+    let docs = allAnalysisDocuments;
+
     if (showOnlyMyDossiers) {
-      return allAnalysisDocuments.filter(doc => doc.atribuidoPara === userProfile.name);
+      docs = docs.filter(doc => doc.atribuidoPara === userProfile.name);
     }
-    return allAnalysisDocuments;
-  }, [showOnlyMyDossiers, allAnalysisDocuments, userProfile.name]);
+
+    if (filterSemPastasObrigatorias) {
+      docs = docs.filter(doc => doc.pendente);
+    }
+
+    if (statusFilter && statusFilter !== 'Todos') {
+      docs = docs.filter(doc => doc.status === statusFilter);
+    }
+
+    return docs;
+  }, [showOnlyMyDossiers, allAnalysisDocuments, userProfile.name, statusFilter, filterSemPastasObrigatorias]);
+
+  const handleClearFilters = () => {
+    setStatusFilter('');
+    setFilterSemPastasObrigatorias(false);
+    setShowOnlyMyDossiers(true);
+  };
 
   const handleGetNextDossier = () => {
     setIsAssigning(true);
@@ -85,6 +107,7 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
       case 'Analisado': return 'bg-green-100 text-green-700';
       case 'Conforme': return 'bg-blue-100 text-blue-700';
       case 'Aguardando Pré-Análise': return 'bg-yellow-100 text-yellow-700';
+      case 'Aguardando análise': return 'bg-amber-100 text-amber-900 ring-1 ring-amber-200/80';
       case 'Pré-Análise': return 'bg-purple-100 text-purple-700';
       default: return 'bg-gray-100 text-gray-700';
     }
@@ -125,9 +148,18 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
                 </div>
             </div>
 
-            <SelectInput placeholder="Selecione o status" options={['Todos', 'Aguardando Pré-Análise', 'Analisado', 'Conforme', 'Pré-Análise']} />
-            <SelectInput placeholder="Selecione o Tipo da Análise" options={['Todos', 'Tipo 1', 'Tipo 2']} />
-            <SelectInput placeholder="Selecione a Integração" options={['Todos', 'Int. A', 'Int. B']} />
+            <SemPastasObrigatoriasFilter
+              checked={filterSemPastasObrigatorias}
+              onChange={setFilterSemPastasObrigatorias}
+            />
+            <SelectInput
+              placeholder="Selecione o status"
+              options={['Todos', 'Aguardando análise', 'Aguardando Pré-Análise', 'Analisado', 'Conforme', 'Pré-Análise']}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
+            <SelectInput placeholder="Selecione o Tipo da Análise" options={['Todos', 'Tipo 1', 'Tipo 2']} value="" onChange={() => {}} />
+            <SelectInput placeholder="Selecione a Integração" options={['Todos', 'Int. A', 'Int. B']} value="" onChange={() => {}} />
 
             <DateInput placeholder="dd/mm/aaaa" />
             <DateInput placeholder="dd/mm/aaaa" />
@@ -147,12 +179,32 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
                 <button className="bg-[#005c9e] text-white p-2.5 rounded-md hover:bg-[#004a7c]">
                     <SearchIcon className="h-5 w-5" />
                 </button>
-                <button className="bg-gray-200 text-gray-700 p-2.5 rounded-md hover:bg-gray-300">
+                <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="bg-gray-200 text-gray-700 p-2.5 rounded-md hover:bg-gray-300"
+                    title="Limpar filtros"
+                >
                     <XCircleIcon className="h-5 w-5" />
                 </button>
             </div>
         </div>
       </div>
+
+      {filterSemPastasObrigatorias && (
+        <div
+          className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"
+          role="status"
+        >
+          <AlertTriangleIcon className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" aria-hidden />
+          <p>
+            <span className="font-semibold">Filtro de pendência ativo.</span>{' '}
+            {displayedDocuments.length === 0
+              ? 'Nenhum dossiê sem pastas Inicial_I e Recursos_R na fila atual.'
+              : `Exibindo ${displayedDocuments.length} dossiê${displayedDocuments.length === 1 ? '' : 's'} aguardando análise por falta das pastas Inicial_I e Recursos_R.`}
+          </p>
+        </div>
+      )}
 
       {/* Table Section */}
       <div className="overflow-x-auto border border-gray-200 rounded-md">
@@ -170,7 +222,20 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
             {displayedDocuments.map((doc) => (
               <tr key={doc.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.numeroDossie}</td>
+                <td className="px-6 py-4 text-sm text-gray-800 max-w-xs sm:max-w-md">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {doc.pendente && (
+                      <span
+                        className="shrink-0 flex text-amber-600"
+                        title="Pastas obrigatórias Inicial_I e Recursos_R ausentes"
+                      >
+                        <AlertTriangleIcon className="h-4 w-4" aria-hidden />
+                        <span className="sr-only">Pastas obrigatórias Inicial_I e Recursos_R ausentes</span>
+                      </span>
+                    )}
+                    <span className="truncate" title={doc.numeroDossie}>{doc.numeroDossie}</span>
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.dataInicial}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.dataFinalizacao || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -187,9 +252,19 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
                         <span>Visualizar</span>
                       </button>
                     )}
-                    {doc.acaoPreAnalise && (
+                    {doc.acaoPreAnalise && !filterSemPastasObrigatorias && (
                       <button className="bg-orange-100 text-orange-800 px-3 py-1.5 rounded-md text-xs flex items-center space-x-1.5 hover:bg-orange-200 transition-colors">
                         <span>Pré-Análise</span>
+                      </button>
+                    )}
+                    {doc.acaoAnalisar && filterSemPastasObrigatorias && (
+                      <button
+                        type="button"
+                        onClick={() => onAnalyze({ id: doc.id, numeroDossie: doc.numeroDossie })}
+                        className="bg-[#005c9e] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#004a7c] transition-colors shadow-sm ring-2 ring-[#005c9e]/20"
+                      >
+                        <FileTextIcon className="h-3.5 w-3.5" />
+                        <span>Analisar</span>
                       </button>
                     )}
                     {doc.acaoReprocessar && (
@@ -211,7 +286,11 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
              {displayedDocuments.length === 0 && (
               <tr>
                 <td colSpan={7} className="text-center py-10 text-gray-500">
-                  {showOnlyMyDossiers ? 'Você não tem dossiês atribuídos no momento.' : 'Nenhum dossiê encontrado.'}
+                  {filterSemPastasObrigatorias
+                    ? 'Nenhum dossiê sem pastas Inicial_I e Recursos_R na fila atual.'
+                    : showOnlyMyDossiers
+                      ? 'Você não tem dossiês atribuídos no momento.'
+                      : 'Nenhum dossiê encontrado.'}
                 </td>
               </tr>
             )}
@@ -242,11 +321,43 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
   );
 };
 
+const SemPastasObrigatoriasFilter: React.FC<{
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}> = ({ checked, onChange }) => (
+  <label
+    className={`flex items-center gap-2.5 min-w-[200px] flex-grow px-3 py-2.5 rounded-md border cursor-pointer transition-colors select-none ${
+      checked
+        ? 'border-amber-400 bg-amber-50/90 ring-1 ring-amber-200/60'
+        : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
+    }`}
+  >
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#005c9e] focus:ring-2 focus:ring-[#005c9e] focus:ring-offset-0"
+    />
+    <span className="text-sm font-semibold text-gray-900 leading-tight">
+      Sem pastas obrigatórias (I/R)
+    </span>
+  </label>
+);
+
 // Reusable Select Input for filters
-const SelectInput: React.FC<{ placeholder: string, options: string[] }> = ({ placeholder, options }) => (
-    <div className="relative min-w-[150px] flex-grow max-w-[200px]">
-        <select className="w-full p-2.5 border border-gray-300 rounded-md appearance-none bg-gray-100 focus:outline-none focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] text-sm text-gray-700">
-            <option value="" disabled selected hidden>{placeholder}</option>
+const SelectInput: React.FC<{
+  placeholder: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+}> = ({ placeholder, options, value, onChange }) => (
+    <div className="relative flex-grow min-w-[150px] max-w-[200px]">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full p-2.5 border border-gray-300 rounded-md appearance-none bg-gray-100 focus:outline-none focus:ring-1 focus:ring-[#005c9e] focus:border-[#005c9e] text-sm text-gray-700"
+        >
+            <option value="">{placeholder}</option>
             {options.map(option => <option key={option} value={option}>{option}</option>)}
         </select>
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
