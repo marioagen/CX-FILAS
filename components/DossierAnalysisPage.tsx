@@ -8,6 +8,7 @@ import {
 export interface DossierToAnalyze {
   id: string;
   numeroDossie: string;
+  pendente?: boolean;
 }
 
 interface DossierAnalysisPageProps {
@@ -183,13 +184,17 @@ const DossierAnalysisPage: React.FC<DossierAnalysisPageProps> = ({ dossier, onBa
         <section className="w-[42%] min-w-[360px] flex flex-col min-h-0 border border-gray-200 border-b-0 bg-white">
           <h2 className="px-4 py-2 text-xs font-medium text-gray-700">Análise simplificada</h2>
           <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
-            <PendenciasImpeditiveasAlert />
-            <EtapaChecklistPanel
-              open={checklistOpen}
-              onToggle={toggleChecklist}
-              activeRowKey={activeConferenciaRowKey}
-              onShowEvidence={showDocumentEvidence}
-            />
+            {dossier.pendente && (
+              <>
+                <PendenciasImpeditiveasAlert />
+                <EtapaChecklistPanel
+                  open={checklistOpen}
+                  onToggle={toggleChecklist}
+                  activeRowKey={activeConferenciaRowKey}
+                  onShowEvidence={showDocumentEvidence}
+                />
+              </>
+            )}
             <AccordionSection
               title="ISENÇÃO"
               done
@@ -226,11 +231,18 @@ const DossierAnalysisPage: React.FC<DossierAnalysisPageProps> = ({ dossier, onBa
             <AccordionSection
               title="CONTRIBUIÇÃO À VISTA"
               done
+              warning
               tags={['Plano de CML', 'MAPA']}
               open={!!openSections.vista}
               onToggle={() => toggleSection('vista')}
             >
-              <p className="px-3 py-3 text-xs text-gray-500">Nenhuma pergunta pendente nesta seção.</p>
+              <div className="mx-1 my-2 flex gap-2 rounded border border-[#f59e0b] bg-amber-50/60 px-3 py-2 text-xs text-gray-800" role="note">
+                <AlertTriangleIcon className="h-4 w-4 shrink-0 mt-0.5 text-[#d97706]" aria-hidden />
+                <p>
+                  <span className="font-semibold text-[#92400e]">Inconsistência:</span> a data de recolhimento da contribuição à vista no
+                  Plano de CML (15/08/1984) diverge da registrada no MAPA (15/09/1984). Confira o comprovante antes de concluir.
+                </p>
+              </div>
             </AccordionSection>
 
             <div className="mx-1 flex items-center gap-2 rounded border border-[#3b82c4] px-3 py-2 text-xs text-gray-800">
@@ -300,7 +312,12 @@ const DossierAnalysisPage: React.FC<DossierAnalysisPageProps> = ({ dossier, onBa
               <div className="flex-1 overflow-y-auto text-xs">
                 <div className="px-3 py-1.5 bg-[#4a4f56] text-gray-200">Documento Completo</div>
                 {FOLDERS.map(folder =>
-                  folder.kind === 'missing' ? (
+                  folder.kind === 'missing' && !dossier.pendente ? (
+                    <div key={folder.name} className="flex items-center gap-2 px-3 py-1.5 bg-[#24272b] text-gray-100">
+                      <FolderIcon className="h-3.5 w-3.5 text-gray-300" />
+                      <span>{folder.name}</span>
+                    </div>
+                  ) : folder.kind === 'missing' ? (
                     <div
                       key={folder.name}
                       className="flex items-center gap-2 px-3 py-1.5 bg-[#3d3220] text-amber-300 border-y border-amber-500/30"
@@ -455,6 +472,7 @@ const EtapaChecklistPanel: React.FC<{
     <div className="divide-y divide-gray-100">
       {CHECKLIST_SECTIONS.map(section => {
         const isOpen = !!open[section.id];
+        const hasDivergencia = section.blocos.some(b => b.linhas.some(l => l.status === 'divergencia'));
         return (
           <div key={section.id}>
             <button
@@ -463,7 +481,7 @@ const EtapaChecklistPanel: React.FC<{
               aria-expanded={isOpen}
               className="flex w-full items-center gap-2.5 px-4 py-3 text-left hover:bg-gray-50/80"
             >
-              <ChecklistDoneIcon />
+              {hasDivergencia ? <ChecklistWarningIcon /> : <ChecklistDoneIcon />}
               <span className="flex-1 text-sm font-bold text-[#0b2d4a]">{section.titulo}</span>
               {isOpen
                 ? <ChevronUpIcon className="h-4 w-4 shrink-0 text-gray-400" />
@@ -498,6 +516,13 @@ const ChecklistDoneIcon: React.FC = () => (
     <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 13l4 4L19 7" />
     </svg>
+  </span>
+);
+
+const ChecklistWarningIcon: React.FC = () => (
+  <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[#d97706]" title="Há divergência nesta seção">
+    <AlertTriangleIcon className="h-5 w-5" aria-hidden />
+    <span className="sr-only">Há divergência nesta seção</span>
   </span>
 );
 
@@ -666,11 +691,12 @@ const StepArrow: React.FC<{ direction: 'left' | 'right'; disabled: boolean; onCl
 const AccordionSection: React.FC<{
   title: string;
   done?: boolean;
+  warning?: boolean;
   tags?: string[];
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
-}> = ({ title, done, tags, open, onToggle, children }) => (
+}> = ({ title, done, warning, tags, open, onToggle, children }) => (
   <div className="border-b border-gray-100">
     <button
       type="button"
@@ -678,7 +704,12 @@ const AccordionSection: React.FC<{
       aria-expanded={open}
       className="flex w-full items-center gap-2 bg-[#eef0f3] px-3 py-1.5 text-left hover:bg-[#e5e8ec]"
     >
-      {done
+      {warning ? (
+        <span className="flex shrink-0 text-[#d97706]" title="Há inconsistência nesta seção">
+          <AlertTriangleIcon className="h-4 w-4" aria-hidden />
+          <span className="sr-only">Há inconsistência nesta seção</span>
+        </span>
+      ) : done
         ? <CheckCircleIcon className="h-4 w-4 shrink-0 text-[#005c9e]" />
         : <CircleIcon className="h-4 w-4 shrink-0 text-gray-400" />}
       <span className="text-[11px] font-semibold tracking-wide text-gray-700">{title}</span>

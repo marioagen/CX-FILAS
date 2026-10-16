@@ -35,7 +35,7 @@ const initialDocumentsData: AnalysisDocument[] = [
 
 interface DocumentAnalysisPageProps {
   userProfile: UserProfile;
-  onAnalyze: (doc: { id: string; numeroDossie: string }) => void;
+  onAnalyze: (doc: { id: string; numeroDossie: string; pendente?: boolean }) => void;
 }
 
 const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile, onAnalyze }) => {
@@ -316,16 +316,14 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
                         <span>Pré-Análise</span>
                       </button>
                     )}
-                    {doc.acaoAnalisar && filterSemPastasObrigatorias && (
-                      <button
-                        type="button"
-                        onClick={() => onAnalyze({ id: doc.id, numeroDossie: doc.numeroDossie })}
-                        className="bg-[#005c9e] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#004a7c] transition-colors shadow-sm ring-2 ring-[#005c9e]/20"
-                      >
-                        <FileTextIcon className="h-3.5 w-3.5" />
-                        <span>Analisar</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onAnalyze({ id: doc.id, numeroDossie: doc.numeroDossie, pendente: doc.pendente })}
+                      className="bg-[#005c9e] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#004a7c] transition-colors shadow-sm"
+                    >
+                      <FileTextIcon className="h-3.5 w-3.5" />
+                      <span>Analisar</span>
+                    </button>
                     {doc.acaoReprocessar && (
                       <button className="bg-red-100 text-red-800 px-3 py-1.5 rounded-md text-xs flex items-center space-x-1.5 hover:bg-red-200 transition-colors">
                         <RefreshCwIcon className="h-3.5 w-3.5" />

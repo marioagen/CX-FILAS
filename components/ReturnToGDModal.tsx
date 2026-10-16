@@ -63,16 +63,6 @@ const ReturnToGDModal: React.FC<ReturnToGDModalProps> = ({ isOpen, dossierIds, o
         </header>
 
         <div className="space-y-4 px-5 py-5">
-          {count > 1 && (
-            <div className="flex flex-wrap gap-1.5" aria-label="Dossiês selecionados">
-              {dossierIds.map(id => (
-                <span key={id} className="rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-700">
-                  {id}
-                </span>
-              ))}
-            </div>
-          )}
-
           <div>
             <label htmlFor="return-gd-motivo" className="mb-1.5 block text-sm font-medium text-gray-800">
               Motivo da Devolução <span className="text-red-500">*</span>
