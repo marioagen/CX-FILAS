@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import ReturnToGDModal, { ReturnToGDButton } from './ReturnToGDModal';
 import { SearchIcon, ChevronDownIcon, CalendarIcon, XCircleIcon, UserRoundIcon, AssignIcon, EyeIcon, RefreshCwIcon, ZapIcon, FileTextIcon, AlertTriangleIcon } from './Icons';
 import { UserProfile } from '../types';
 
@@ -44,6 +45,9 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
   const [showOnlyMyDossiers, setShowOnlyMyDossiers] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [filterSemPastasObrigatorias, setFilterSemPastasObrigatorias] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [returnIds, setReturnIds] = useState<string[] | null>(null);
+  const closeReturnModal = useCallback(() => setReturnIds(null), []);
 
   useEffect(() => {
     if (notification) {
@@ -69,6 +73,29 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
 
     return docs;
   }, [showOnlyMyDossiers, allAnalysisDocuments, userProfile.name, statusFilter, filterSemPastasObrigatorias]);
+
+  useEffect(() => {
+    const visibleIds = new Set(displayedDocuments.map(d => d.id));
+    setSelectedIds(prev => prev.filter(id => visibleIds.has(id)));
+  }, [displayedDocuments]);
+
+  const allSelected = displayedDocuments.length > 0 && displayedDocuments.every(d => selectedIds.includes(d.id));
+  const canReturnToGD =
+    selectedIds.length > 0 && selectedIds.every(id => allAnalysisDocuments.find(d => d.id === id)?.pendente);
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+
+  const handleConfirmReturn = () => {
+    if (!returnIds) return;
+    setAllAnalysisDocuments(prev => prev.filter(d => !returnIds.includes(d.id)));
+    setSelectedIds([]);
+    setReturnIds(null);
+    setNotification({
+      message: `${returnIds.length} ${returnIds.length === 1 ? 'dossiê devolvido' : 'dossiês devolvidos'} à Gestão Documental.`,
+      type: 'success',
+    });
+  };
 
   const handleClearFilters = () => {
     setStatusFilter('');
@@ -206,11 +233,34 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
         </div>
       )}
 
+      {selectedIds.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#005c9e]/20 bg-[#eef5fb] px-3 py-2">
+          <p className="text-sm text-[#0b2d4a]">
+            <span className="font-semibold">{selectedIds.length}</span>{' '}
+            {selectedIds.length === 1 ? 'dossiê selecionado' : 'dossiês selecionados'}
+            <button type="button" onClick={() => setSelectedIds([])} className="ml-3 text-xs font-medium text-[#005c9e] hover:underline">
+              Limpar seleção
+            </button>
+          </p>
+          {canReturnToGD && <ReturnToGDButton size="md" count={selectedIds.length} onClick={() => setReturnIds(selectedIds)} />}
+        </div>
+      )}
+
       {/* Table Section */}
       <div className="overflow-x-auto border border-gray-200 rounded-md">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th scope="col" className="w-10 pl-6 pr-2 py-3">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={() => setSelectedIds(allSelected ? [] : displayedDocuments.map(d => d.id))}
+                  disabled={displayedDocuments.length === 0}
+                  aria-label="Selecionar todos"
+                  className="h-4 w-4 rounded border-gray-300 text-[#005c9e] focus:ring-2 focus:ring-[#005c9e] focus:ring-offset-0"
+                />
+              </th>
               {['ID', 'Número Dossiê', 'Data Inicial', 'Data Finalização', 'Status', 'Dias Restantes', 'Ações'].map((header) => (
                 <th key={header} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {header}
@@ -220,7 +270,16 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {displayedDocuments.map((doc) => (
-              <tr key={doc.id} className="hover:bg-gray-50">
+              <tr key={doc.id} className={selectedIds.includes(doc.id) ? 'bg-[#eef5fb]' : 'hover:bg-gray-50'}>
+                <td className="w-10 pl-6 pr-2 py-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(doc.id)}
+                    onChange={() => toggleSelected(doc.id)}
+                    aria-label={`Selecionar dossiê ${doc.id}`}
+                    className="h-4 w-4 rounded border-gray-300 text-[#005c9e] focus:ring-2 focus:ring-[#005c9e] focus:ring-offset-0"
+                  />
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{doc.id}</td>
                 <td className="px-6 py-4 text-sm text-gray-800 max-w-xs sm:max-w-md">
                   <div className="flex items-center gap-2 min-w-0">
@@ -285,7 +344,7 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
             ))}
              {displayedDocuments.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-gray-500">
+                <td colSpan={8} className="text-center py-10 text-gray-500">
                   {filterSemPastasObrigatorias
                     ? 'Nenhum dossiê sem pastas Inicial_I e Recursos_R na fila atual.'
                     : showOnlyMyDossiers
@@ -297,6 +356,13 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
           </tbody>
         </table>
       </div>
+
+      <ReturnToGDModal
+        isOpen={returnIds !== null}
+        dossierIds={returnIds ?? []}
+        onClose={closeReturnModal}
+        onConfirm={handleConfirmReturn}
+      />
 
       {/* Pagination */}
       <div className="mt-4 p-4 flex flex-col sm:flex-row justify-between items-center text-sm text-gray-600">
@@ -321,12 +387,15 @@ const DocumentAnalysisPage: React.FC<DocumentAnalysisPageProps> = ({ userProfile
   );
 };
 
-const SemPastasObrigatoriasFilter: React.FC<{
+export const SemPastasObrigatoriasFilter: React.FC<{
   checked: boolean;
   onChange: (checked: boolean) => void;
-}> = ({ checked, onChange }) => (
+  compact?: boolean;
+}> = ({ checked, onChange, compact }) => (
   <label
-    className={`flex items-center gap-2.5 min-w-[200px] flex-grow px-3 py-2.5 rounded-md border cursor-pointer transition-colors select-none ${
+    className={`flex items-center cursor-pointer rounded-md border transition-colors select-none ${
+      compact ? 'gap-2 px-2.5 py-1.5' : 'gap-2.5 min-w-[200px] flex-grow px-3 py-2.5'
+    } ${
       checked
         ? 'border-amber-400 bg-amber-50/90 ring-1 ring-amber-200/60'
         : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
@@ -336,9 +405,9 @@ const SemPastasObrigatoriasFilter: React.FC<{
       type="checkbox"
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
-      className="h-4 w-4 shrink-0 rounded border-gray-300 text-[#005c9e] focus:ring-2 focus:ring-[#005c9e] focus:ring-offset-0"
+      className={`${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} shrink-0 rounded border-gray-300 text-[#005c9e] focus:ring-2 focus:ring-[#005c9e] focus:ring-offset-0`}
     />
-    <span className="text-sm font-semibold text-gray-900 leading-tight">
+    <span className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 leading-tight whitespace-nowrap`}>
       Sem pastas obrigatórias (I/R)
     </span>
   </label>

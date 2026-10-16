@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { MenuIcon, UserRoundIcon, UsersIcon } from './Icons';
 import { UserProfile } from '../types';
 
+export type AppPage = 'queueManagement' | 'documentAnalysis' | 'analysisQueues';
+
 interface HeaderProps {
-  onPageChange: (page: 'queueManagement' | 'documentAnalysis') => void;
+  onPageChange: (page: AppPage) => void;
   userProfile: UserProfile;
   onToggleProfile: () => void;
 }
@@ -16,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ onPageChange, userProfile, onToggleProf
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const handleNavigation = (page: 'queueManagement' | 'documentAnalysis') => {
+  const handleNavigation = (page: AppPage) => {
     onPageChange(page);
     setIsMenuOpen(false); // Close menu after navigation
   };
@@ -28,12 +30,18 @@ const Header: React.FC<HeaderProps> = ({ onPageChange, userProfile, onToggleProf
           <MenuIcon className="h-6 w-6" />
         </button>
         {isMenuOpen && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white rounded-md shadow-lg py-2 text-gray-800 z-20">
+          <div className="absolute top-full left-0 mt-1 w-72 bg-white rounded-md shadow-lg py-2 text-gray-800 z-20">
             <button
               onClick={() => handleNavigation('queueManagement')}
               className="block w-full text-left px-4 py-2 hover:bg-gray-100"
             >
               Gestão de Filas
+            </button>
+            <button
+              onClick={() => handleNavigation('analysisQueues')}
+              className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+            >
+              Gerenciar filas e Bolsões da análise
             </button>
             <button
               onClick={() => handleNavigation('documentAnalysis')}

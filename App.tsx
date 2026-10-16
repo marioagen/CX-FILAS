@@ -1,17 +1,18 @@
 
 import React, { useState } from 'react';
-import Header from './components/Header';
+import Header, { AppPage } from './components/Header';
 import UserManagement from './components/UserManagement';
 import DocumentAnalysisPage from './components/DocumentAnalysisPage';
 import DossierAnalysisPage, { DossierToAnalyze } from './components/DossierAnalysisPage';
+import AnalysisQueueBolsoesPage from './components/AnalysisQueueBolsoesPage';
 import { UserProfile } from './types';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'queueManagement' | 'documentAnalysis'>('documentAnalysis');
+  const [currentPage, setCurrentPage] = useState<AppPage>('documentAnalysis');
   const [userProfile, setUserProfile] = useState<UserProfile>({ name: 'Analista Teste', role: 'analyst' });
   const [analyzingDossier, setAnalyzingDossier] = useState<DossierToAnalyze | null>(null);
 
-  const handlePageChange = (page: 'queueManagement' | 'documentAnalysis') => {
+  const handlePageChange = (page: AppPage) => {
     setAnalyzingDossier(null);
     setCurrentPage(page);
   };
@@ -26,7 +27,9 @@ const App: React.FC = () => {
 
   const breadcrumbs = currentPage === 'queueManagement'
     ? [{ label: 'Gestão', link: '#' }, { label: 'Filas', link: '#' }]
-    : [{ label: 'Análise', link: '#' }, { label: 'Documentos análise', link: '#' }];
+    : currentPage === 'analysisQueues'
+      ? [{ label: 'Análise', link: '#' }, { label: 'Gestão de Filas', link: '#' }]
+      : [{ label: 'Análise', link: '#' }, { label: 'Documentos análise', link: '#' }];
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] font-sans">
@@ -42,6 +45,8 @@ const App: React.FC = () => {
           <Breadcrumbs paths={breadcrumbs} />
           {currentPage === 'queueManagement' ? (
             <UserManagement />
+          ) : currentPage === 'analysisQueues' ? (
+            <AnalysisQueueBolsoesPage onClose={() => setCurrentPage('documentAnalysis')} />
           ) : (
             <DocumentAnalysisPage userProfile={userProfile} onAnalyze={setAnalyzingDossier} />
           )}
