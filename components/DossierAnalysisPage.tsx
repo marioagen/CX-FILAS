@@ -68,6 +68,7 @@ const DossierAnalysisPage: React.FC<DossierAnalysisPageProps> = ({ dossier, onBa
   const [zoom, setZoom] = useState(75);
   const [activeEvidence, setActiveEvidence] = useState<EvidenceHighlight | null>(null);
   const [activeConferenciaRowKey, setActiveConferenciaRowKey] = useState<string | null>(null);
+  const [showOnlyDivergencias, setShowOnlyDivergencias] = useState(false);
 
   const showDocumentEvidence = (evidence: EvidenceHighlight, rowKey: string) => {
     setActiveEvidence(evidence);
@@ -80,6 +81,18 @@ const DossierAnalysisPage: React.FC<DossierAnalysisPageProps> = ({ dossier, onBa
 
   const toggleChecklist = (key: string) =>
     setChecklistOpen(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const showDivergencias = () => {
+    const divergentSectionIds = CHECKLIST_SECTIONS
+      .filter(section => section.blocos.some(bloco => bloco.linhas.some(linha => linha.status === 'divergencia')))
+      .map(section => section.id);
+
+    setShowOnlyDivergencias(true);
+    setChecklistOpen(Object.fromEntries(divergentSectionIds.map(id => [id, true])));
+    window.requestAnimationFrame(() => {
+      document.getElementById('divergencias-checklist')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   const stepIndex = ANALYSIS_STEPS.indexOf(activeStep);
 
@@ -186,12 +199,14 @@ const DossierAnalysisPage: React.FC<DossierAnalysisPageProps> = ({ dossier, onBa
           <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
             {dossier.pendente && (
               <>
-                <PendenciasImpeditiveasAlert />
+                <PendenciasImpeditiveasAlert onShowDivergencias={showDivergencias} />
                 <EtapaChecklistPanel
                   open={checklistOpen}
                   onToggle={toggleChecklist}
                   activeRowKey={activeConferenciaRowKey}
                   onShowEvidence={showDocumentEvidence}
+                  showOnlyDivergencias={showOnlyDivergencias}
+                  onClearFilter={() => setShowOnlyDivergencias(false)}
                 />
               </>
             )}
@@ -457,20 +472,37 @@ const EtapaChecklistPanel: React.FC<{
   onToggle: (id: string) => void;
   activeRowKey: string | null;
   onShowEvidence: (evidence: EvidenceHighlight, rowKey: string) => void;
-}> = ({ open, onToggle, activeRowKey, onShowEvidence }) => (
-  <div className="mx-1 mb-4 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+  showOnlyDivergencias: boolean;
+  onClearFilter: () => void;
+}> = ({ open, onToggle, activeRowKey, onShowEvidence, showOnlyDivergencias, onClearFilter }) => {
+  const visibleSections = showOnlyDivergencias
+    ? CHECKLIST_SECTIONS.filter(section => section.blocos.some(bloco => bloco.linhas.some(linha => linha.status === 'divergencia')))
+    : CHECKLIST_SECTIONS;
+
+  return (
+  <div id="divergencias-checklist" className="mx-1 mb-4 scroll-mt-3 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
     <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-gray-100">
       <div>
         <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Checklist da etapa</p>
         <h3 className="mt-1 text-base font-bold text-[#0b2d4a] leading-tight">Qualificação do mutuário</h3>
       </div>
-      <span className="shrink-0 rounded-full bg-[#005c9e] px-2.5 py-0.5 text-[11px] font-semibold text-white">
-        3 conferidos
-      </span>
+      {showOnlyDivergencias ? (
+        <button
+          type="button"
+          onClick={onClearFilter}
+          className="shrink-0 rounded border border-[#b45309] px-2.5 py-1 text-[11px] font-semibold text-[#92400e] hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b45309] focus-visible:ring-offset-2"
+        >
+          Mostrar todos
+        </button>
+      ) : (
+        <span className="shrink-0 rounded-full bg-[#005c9e] px-2.5 py-0.5 text-[11px] font-semibold text-white">
+          3 conferidos
+        </span>
+      )}
     </div>
 
     <div className="divide-y divide-gray-100">
-      {CHECKLIST_SECTIONS.map(section => {
+      {visibleSections.map(section => {
         const isOpen = !!open[section.id];
         const hasDivergencia = section.blocos.some(b => b.linhas.some(l => l.status === 'divergencia'));
         return (
@@ -506,7 +538,8 @@ const EtapaChecklistPanel: React.FC<{
       })}
     </div>
   </div>
-);
+  );
+};
 
 const ChecklistDoneIcon: React.FC = () => (
   <span
@@ -639,7 +672,7 @@ const InstrumentoCompraVendaDocument: React.FC<{ highlight: EvidenceHighlight | 
   );
 };
 
-const PendenciasImpeditiveasAlert: React.FC = () => (
+const PendenciasImpeditiveasAlert: React.FC<{ onShowDivergencias: () => void }> = ({ onShowDivergencias }) => (
   <div
     className="mx-1 mb-3 flex gap-3 rounded-lg border border-orange-400 bg-[#fafafa] px-4 py-3"
     role="alert"
@@ -650,7 +683,7 @@ const PendenciasImpeditiveasAlert: React.FC = () => (
     >
       !
     </span>
-    <div className="min-w-0 pt-0.5">
+    <div className="min-w-0 flex-1 pt-0.5">
       <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
         Lembrete antes de concluir
       </p>
@@ -662,6 +695,15 @@ const PendenciasImpeditiveasAlert: React.FC = () => (
         <span className="font-semibold">Recursos_R</span> bloqueia a conclusão, independentemente da
         conferência cadastral.
       </p>
+      <div className="mt-2 flex justify-start">
+        <button
+          type="button"
+          onClick={onShowDivergencias}
+          className="rounded border border-[#005c9e] bg-transparent px-3 py-1.5 text-xs font-semibold text-[#005c9e] transition-colors hover:bg-[#e8f1f9] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#005c9e] focus-visible:ring-offset-2"
+        >
+          Ver divergências
+        </button>
+      </div>
     </div>
   </div>
 );
